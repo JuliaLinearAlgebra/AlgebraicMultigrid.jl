@@ -2,7 +2,11 @@ const F_NODE = 0
 const C_NODE = 1
 const U_NODE = 2
 
-function RS(S::SparseMatrixCSC)
+struct RS
+end
+
+split_nodes(::RS, S::SparseMatrixCSC) = RS_CF_splitting(S - spdiagm(diag(S)))
+function RS_CF_splitting(S::SparseMatrixCSC)
 
 	m,n = size(S)
 
