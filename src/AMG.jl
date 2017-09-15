@@ -1,5 +1,6 @@
 module AMG
 
-# package code goes here
+include("mg.jl")
+export RS
 
 end # module
