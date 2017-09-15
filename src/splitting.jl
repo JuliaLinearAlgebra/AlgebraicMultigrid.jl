@@ -1,3 +1,7 @@
+const F_NODE = 0
+const C_NODE = 1
+const U_NODE = 2
+
 function RS(S::SparseMatrixCSC)
 
 	m,n = size(S)

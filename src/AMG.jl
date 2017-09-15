@@ -3,7 +3,7 @@ module AMG
 include("strength.jl")
 export classical
 
-include("mg.jl")
+include("splitting.jl")
 export RS
 
 include("gallery.jl")
