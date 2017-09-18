@@ -26,7 +26,7 @@ function ruge_stuben(A::SparseMatrixCSC;
             break
         end
     end
-    levels
+    MultiLevel(levels)
 end
 
 function extend_heirarchy!(levels::Vector{Level}, strength, CF, A)
