@@ -33,13 +33,11 @@ function strength_of_connection{T}(c::Classical{T}, A::SparseMatrixCSC)
 end
 
 function find_max_off_diag(neighbors, col)
-    max_offdiag = 0
-    for (i,v) in enumerate(neighbors)
-        if col != i
-            max_offdiag = max(max_offdiag, abs(v))
-        end
+    maxval = zero(eltype(neighbors))
+    for i in 1:length(neighbors.nzval)
+        maxval = max(maxval, ifelse(neighbors.nzind[i] == col, 0, abs(neighbors.nzval[i])))
     end
-    max_offdiag
+    return maxval
 end
 
 function scale_cols_by_largest_entry(A::SparseMatrixCSC)
