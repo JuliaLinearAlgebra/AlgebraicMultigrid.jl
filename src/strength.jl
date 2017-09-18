@@ -1,5 +1,11 @@
-function classical(A::SparseMatrixCSC, θ::Float64)
+abstract type Strength end
+struct Classical{T} <: Strength
+    θ::T
+end
 
+function strength_of_connection{T}(c::Classical{T}, A::SparseMatrixCSC)
+
+    θ = c.θ
     I = Int[]
     J = Int[]
     V = Float64[]
