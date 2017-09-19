@@ -68,22 +68,20 @@ function solve{T}(ml::MultiLevel, b::Vector{T}; maxiter = 100,
         if length(ml.levels) == 1
             x = coarse_solver(ml.coarse_solver, A, b)
         else
-            x = __solve(cycle, ml, x, b, lvl, residuals)
+            x = __solve(cycle, ml, x, b, lvl)
         end
+        push!(residuals, norm(A*x - b))
     end
     x
 end
-function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl, residuals)
+function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl)
 
-    @show lvl
     A = ml.levels[lvl].A
     presmoother!(ml.presmoother, A, x, b)
 
     res = b - A * x
-    @show norm(res)
-    push!(residuals, norm(res))
-
     coarse_b = ml.levels[lvl].R * res
+    coarse_x = zeros(T, size(coarse_b))
 
     if lvl == length(ml.levels) - 1
         coarse_x = coarse_solver(ml.coarse_solver, ml.levels[end].A, coarse_b)

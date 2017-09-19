@@ -44,7 +44,7 @@ end
 @testset "Coarse Solver" begin
 A = poisson(10)
 b = A * ones(10)
-@test sum(abs, AMG.coarse_solver(AMG.Pinv(), A, b) - ones(10)) < 1e-6
+@test sum(abs2, AMG.coarse_solver(AMG.Pinv(), A, b) - ones(10)) < 1e-6
 end
 
 @testset "Multilevel" begin
@@ -58,4 +58,12 @@ for i = 1:8
     @test size(ml.levels[i].A, 1) == s[i]
     @test nnz(ml.levels[i].A) == n[i]
 end
+end
+
+@testset "Solver" begin
+A = poisson(1000)
+A = float.(A)
+ml = ruge_stuben(A)
+x = solve(ml, A * ones(1000))
+@test sum(abs2, x - ones(1000)) < 1e-10
 end

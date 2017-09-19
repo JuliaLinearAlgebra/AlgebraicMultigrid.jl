@@ -14,7 +14,9 @@ export poisson
 include("smoother.jl")
 
 include("multilevel.jl")
+export solve
 
 include("classical.jl")
+export ruge_stuben
 
 end # module
