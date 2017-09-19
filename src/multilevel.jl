@@ -19,6 +19,12 @@ function Base.show(io::IO, ml::MultiLevel)
     op = operator_complexity(ml.levels)
     g = grid_complexity(ml.levels)
     c = ml.coarse_solver
+    total_nnz = sum(nnz(level.A) for level in ml.levels)
+    lstr = ""
+    for (i, level) in enumerate(ml.levels)
+        lstr = lstr *
+            @sprintf "   %2d   %10d   %10d [%5.2f%%]\n" i size(level.A, 1) nnz(level.A) (100 * nnz(level.A) / total_nnz)
+    end
     str = """
     Multilevel Solver
     -----------------
@@ -26,6 +32,9 @@ function Base.show(io::IO, ml::MultiLevel)
     Grid Complexity: $g
     No. of Levels: $(size(ml.levels, 1))
     Coarse Solver: $c
+    Level     Unknowns     NonZeros
+    -----     --------     --------
+    $lstr
     """
     print(io, str)
 end
