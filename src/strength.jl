@@ -2,6 +2,7 @@ abstract type Strength end
 struct Classical{T} <: Strength
     θ::T
 end
+Classical(;θ = 0.25) = Classical(θ)
 
 function strength_of_connection{T}(c::Classical{T}, A::SparseMatrixCSC)
 
@@ -14,8 +15,8 @@ function strength_of_connection{T}(c::Classical{T}, A::SparseMatrixCSC)
 
     for i = 1:n
         neighbors = A[:,i]
-        m = find_max_off_diag(neighbors, i)
-        threshold = θ * m
+        _m = find_max_off_diag(neighbors, i)
+        threshold = θ * _m
         for j in nzrange(A, i)
             row = A.rowval[j]
             val = A.nzval[j]
@@ -26,19 +27,17 @@ function strength_of_connection{T}(c::Classical{T}, A::SparseMatrixCSC)
             end
         end
     end
-    S = sparse(I, J, V)
+    S = sparse(I, J, V, m, n)
 
     scale_cols_by_largest_entry(S)
 end
 
 function find_max_off_diag(neighbors, col)
-    max_offdiag = 0
-    for (i,v) in enumerate(neighbors)
-        if col != i
-            max_offdiag = max(max_offdiag, abs(v))
-        end
+    maxval = zero(eltype(neighbors))
+    for i in 1:length(neighbors.nzval)
+        maxval = max(maxval, ifelse(neighbors.nzind[i] == col, 0, abs(neighbors.nzval[i])))
     end
-    max_offdiag
+    return maxval
 end
 
 function scale_cols_by_largest_entry(A::SparseMatrixCSC)
@@ -51,16 +50,16 @@ function scale_cols_by_largest_entry(A::SparseMatrixCSC)
 
     k = 1
     for i = 1:n
-        m = maximum(A[:,i])
+        _m = maximum(A[:,i])
         for j in nzrange(A, i)
             row = A.rowval[j]
             val = A.nzval[j]
             I[k] = row
             J[k] = i
-            V[k] = val / m
+            V[k] = val / _m
             k += 1
         end
     end
 
-    sparse(I,J,V)
+    sparse(I,J,V,m,n)
 end

@@ -9,6 +9,10 @@ export split_nodes, RS
 include("gallery.jl")
 export poisson
 
+include("smoother.jl")
+
+include("multilevel.jl")
+
 include("classical.jl")
 
 end # module

@@ -7,36 +7,38 @@ struct Solver{S,T,P,PS}
     max_coarse::Int64
 end
 
-struct Level{T}
-    A::T
-end
-
 function ruge_stuben(A::SparseMatrixCSC;
-                strength = Classical(),
+                strength = Classical(0.25),
                 CF = RS(),
                 presmoother = GaussSiedel(),
                 postsmoother = GaussSiedel(),
                 max_levels = 10,
                 max_coarse = 500)
 
-        s = Solver(strength, CF, presmoother,
-                    postsmoother, max_levels, max_levels)
+    s = Solver(strength, CF, presmoother,
+                postsmoother, max_levels, max_levels)
 
-        levels = [Level(A)]
+    levels = Vector{Level}()
 
-        while length(levels) < max_levels && size(levels[end].A, 1)
-            extend_heirarchy!(levels, strength, CF, A)
+    while length(levels) < max_levels
+        A = extend_heirarchy!(levels, strength, CF, A)
+        if size(levels[end].A, 1) < max_coarse
+            break
         end
+    end
+    MultiLevel(levels)
 end
 
 function extend_heirarchy!(levels::Vector{Level}, strength, CF, A)
     S = strength_of_connection(strength, A)
     splitting = split_nodes(CF, S)
     P, R = direct_interpolation(A, S, splitting)
+    push!(levels, Level(A, P, R))
+    A = R * A * P
 end
 
 function direct_interpolation{T,V}(A::T, S::T, splitting::Vector{V})
-    
+
     fill!(S.nzval, 1.)
     S = A .* S
     Pp = rs_direct_interpolation_pass1(S, A, splitting)
@@ -65,7 +67,8 @@ function rs_direct_interpolation_pass1(S, A, splitting)
          if splitting[i] == C_NODE
              nnz += 1
          else
-            for jj = Sp[i]:Sp[i+1]-1
+            for jj = Sp[i]:Sp[i+1]
+                jj > length(Sj) && continue
                 if splitting[Sj[jj]] == C_NODE && Sj[jj] != i
                     nnz += 1
                 end
@@ -92,7 +95,6 @@ function rs_direct_interpolation_pass1(S, A, splitting)
     Bj = zeros(Ti, Bp[end])
     Bx = zeros(Float64, Bp[end])
     n_nodes = size(A, 1)
-    #Bp += 1
 
     for i = 1:n_nodes
         if splitting[i] == C_NODE
@@ -101,7 +103,8 @@ function rs_direct_interpolation_pass1(S, A, splitting)
         else
             sum_strong_pos = 0
             sum_strong_neg = 0
-            for jj = Sp[i]: Sp[i+1]-1
+            for jj = Sp[i]: Sp[i+1]
+                jj > length(Sj) && continue
                 if splitting[Sj[jj]] == C_NODE && Sj[jj] != i
                     if Sx[jj] < 0
                         sum_strong_neg += Sx[jj]
@@ -115,6 +118,7 @@ function rs_direct_interpolation_pass1(S, A, splitting)
             sum_all_neg = 0
             diag = 0;
             for jj = Ap[i]:Ap[i+1]
+                jj > length(Aj) && continue
                 if Aj[jj] == i
                     diag += Ax[jj]
                 else
@@ -134,19 +138,20 @@ function rs_direct_interpolation_pass1(S, A, splitting)
                 beta = 0
             end
 
-            neg_coeff = -alpha/diag;
-            pos_coeff = -beta/diag;
+            neg_coeff = -alpha / diag
+            pos_coeff = -beta / diag
 
             nnz = Bp[i]
             for jj = Sp[i]:Sp[i+1]
+                jj > length(Sj) && continue
                 if splitting[Sj[jj]] == C_NODE && Sj[jj] != i
                     Bj[nnz] = Sj[jj]
                     if Sx[jj] < 0
                         Bx[nnz] = neg_coeff * Sx[jj]
                     else
                         Bx[nnz] = pos_coeff * Sx[jj]
-                        nnz += 1
                     end
+                    nnz += 1
                 end
             end
         end
@@ -159,6 +164,7 @@ function rs_direct_interpolation_pass1(S, A, splitting)
        sum += splitting[i]
    end
    for i = 1:Bp[n_nodes]
+       Bj[i] == 0 && continue
        Bj[i] = m[Bj[i]]
    end
 
