@@ -1,5 +1,7 @@
 module AMG
 
+import IterativeSolvers: gauss_seidel!
+
 include("strength.jl")
 export strength_of_connection, Classical
 

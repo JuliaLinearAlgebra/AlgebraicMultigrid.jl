@@ -10,10 +10,10 @@ end
 function ruge_stuben(A::SparseMatrixCSC;
                 strength = Classical(0.25),
                 CF = RS(),
-                presmoother = GaussSiedel(),
-                postsmoother = GaussSiedel(),
+                presmoother = GaussSeidel(),
+                postsmoother = GaussSeidel(),
                 max_levels = 10,
-                max_coarse = 500)
+                max_coarse = 10)
 
     s = Solver(strength, CF, presmoother,
                 postsmoother, max_levels, max_levels)
@@ -26,7 +26,7 @@ function ruge_stuben(A::SparseMatrixCSC;
             break
         end
     end
-    MultiLevel(levels)
+    MultiLevel(levels, presmoother, postsmoother)
 end
 
 function extend_heirarchy!(levels::Vector{Level}, strength, CF, A)
@@ -46,7 +46,7 @@ function direct_interpolation{T,V}(A::T, S::T, splitting::Vector{V})
 
     Px, Pj = rs_direct_interpolation_pass2(A, S, splitting, Pp)
 
-    Px .= abs.(Px)
+    # Px .= abs.(Px)
     Pj .= Pj .+ 1
 
     R = SparseMatrixCSC(maximum(Pj), size(A, 1), Pp, Pj, Px)
@@ -86,7 +86,86 @@ function rs_direct_interpolation_pass1(S, A, splitting)
                                                 Bp::Vector{Ti})
 
 
-    Ap = A.colptr
+    Bx = zeros(Float64, Bp[end])
+    Bj = zeros(Ti, Bp[end])
+
+    n = size(A, 1)
+
+    for i = 1:n
+        if splitting[i] == C_NODE
+            Bj[Bp[i]] = i
+            Bx[Bp[i]] = 1
+        else
+            sum_strong_pos = zero(Tv)
+            sum_strong_neg = zero(Tv)
+            for j in nzrange(S, i)
+                row = S.rowval[j]
+                sval = S.nzval[j]
+                if splitting[row] == C_NODE && row != i
+                    if sval < 0
+                        sum_strong_neg += sval
+                    else
+                        sum_strong_pos += sval
+                    end
+                end
+            end
+            sum_all_pos = zero(Tv)
+            sum_all_neg = zero(Tv)
+            diag = zero(Tv)
+            for j in nzrange(A, i)
+                row = A.rowval[j]
+                aval = A.nzval[j]
+                if row == i
+                    diag += aval
+                else
+                    if aval < 0
+                        sum_all_neg += aval
+                    else
+                        sum_all_pos += aval
+                    end
+                end
+            end
+            alpha = sum_all_neg / sum_strong_neg
+            beta = sum_all_pos / sum_strong_pos
+
+            if sum_strong_pos == 0
+                diag += sum_all_pos
+                beta = 0
+            end
+
+            neg_coeff = -1 * alpha / diag
+            pos_coeff = -1 * beta / diag
+
+            nnz = Bp[i]
+
+            for j in nzrange(S, i)
+                row = S.rowval[j]
+                sval = S.nzval[j]
+                if splitting[row] == C_NODE && row != i
+                    Bj[nnz] = row
+                    if sval < 0
+                        Bx[nnz] = neg_coeff * sval
+                    else
+                        Bx[nnz] = pos_coeff * sval
+                    end
+                    nnz += 1
+                end
+            end
+        end
+    end
+
+    m = zeros(Ti, n)
+    sum = 0
+    for i = 1:n
+        m[i] = sum
+        sum += splitting[i]
+    end
+    for i = 1:Bp[n]
+        Bj[i] == 0 && continue
+        Bj[i] = m[Bj[i]]
+    end
+
+    #=Ap = A.colptr
     Aj = A.rowval
     Ax = A.nzval
     Sp = S.colptr
@@ -116,30 +195,37 @@ function rs_direct_interpolation_pass1(S, A, splitting)
 
             sum_all_pos = 0
             sum_all_neg = 0
-            diag = 0;
+            diag = 0
             for jj = Ap[i]:Ap[i+1]
                 jj > length(Aj) && continue
                 if Aj[jj] == i
+                    @show Ax[jj]
                     diag += Ax[jj]
                 else
                     if Ax[jj] < 0
-                        sum_all_neg += Ax[jj];
+                        sum_all_neg += Ax[jj]
                     else
-                        sum_all_pos += Ax[jj];
+                        sum_all_pos += Ax[jj]
                     end
                 end
             end
 
             alpha = sum_all_neg / sum_strong_neg
             beta  = sum_all_pos / sum_strong_pos
+            @show alpha
+            @show beta
+            @show diag
 
             if sum_strong_pos == 0
                 diag += sum_all_pos
                 beta = 0
             end
 
-            neg_coeff = -alpha / diag
-            pos_coeff = -beta / diag
+            neg_coeff = -1 * alpha / diag
+            pos_coeff = -1 * beta / diag
+
+            @show neg_coeff
+            @show pos_coeff
 
             nnz = Bp[i]
             for jj = Sp[i]:Sp[i+1]
@@ -151,6 +237,7 @@ function rs_direct_interpolation_pass1(S, A, splitting)
                     else
                         Bx[nnz] = pos_coeff * Sx[jj]
                     end
+                    @show Bx[nnz]
                     nnz += 1
                 end
             end
@@ -166,7 +253,7 @@ function rs_direct_interpolation_pass1(S, A, splitting)
    for i = 1:Bp[n_nodes]
        Bj[i] == 0 && continue
        Bj[i] = m[Bj[i]]
-   end
+   end =#
 
    Bx, Bj, Bp
 end
