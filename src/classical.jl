@@ -42,12 +42,12 @@ function direct_interpolation{T,V}(A::T, S::T, splitting::Vector{V})
     fill!(S.nzval, 1.)
     S = A .* S
     Pp = rs_direct_interpolation_pass1(S, A, splitting)
-    Pp .= Pp .+ 1
+    Pp = Pp .+ 1
 
     Px, Pj = rs_direct_interpolation_pass2(A, S, splitting, Pp)
 
     # Px .= abs.(Px)
-    Pj .= Pj .+ 1
+    Pj = Pj .+ 1
 
     R = SparseMatrixCSC(maximum(Pj), size(A, 1), Pp, Pj, Px)
     P = R'
@@ -59,7 +59,7 @@ end
 function rs_direct_interpolation_pass1(S, A, splitting)
 
      Bp = zeros(Int, size(A.colptr))
-     Sp = S.colptr
+     #=Sp = S.colptr
      Sj = S.rowval
      n_nodes = size(A, 1)
      nnz = 0
@@ -75,6 +75,21 @@ function rs_direct_interpolation_pass1(S, A, splitting)
             end
         end
          Bp[i+1] = nnz
+     end=#
+     n = size(A, 1)
+     nnz = 0
+     for i = 1:n
+         if splitting[i] == C_NODE
+             nnz += 1
+         else
+             for j in nzrange(S, i)
+                 row = S.rowval[j]
+                 if splitting[row] == C_NODE && row != i
+                     nnz += 1
+                end
+             end
+        end
+        Bp[i+1] = nnz
      end
      Bp
  end

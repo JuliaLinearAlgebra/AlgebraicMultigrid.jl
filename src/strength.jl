@@ -29,7 +29,9 @@ function strength_of_connection{T}(c::Classical{T}, A::SparseMatrixCSC)
     end
     S = sparse(I, J, V, m, n)
 
-    scale_cols_by_largest_entry(S)
+    scale_cols_by_largest_entry!(S)
+
+    S'
 end
 
 function find_max_off_diag(neighbors, col)
@@ -40,26 +42,15 @@ function find_max_off_diag(neighbors, col)
     return maxval
 end
 
-function scale_cols_by_largest_entry(A::SparseMatrixCSC)
+function scale_cols_by_largest_entry!(A::SparseMatrixCSC)
 
-    m,n = size(A)
-
-    I = zeros(Int, size(A.nzval))
-    J = similar(I)
-    V = zeros(size(A.nzval))
-
-    k = 1
+    n = size(A, 1)
     for i = 1:n
         _m = maximum(A[:,i])
         for j in nzrange(A, i)
-            row = A.rowval[j]
-            val = A.nzval[j]
-            I[k] = row
-            J[k] = i
-            V[k] = val / _m
-            k += 1
+            A.nzval[j] /= _m
         end
     end
 
-    sparse(I,J,V,m,n)
+    A
 end

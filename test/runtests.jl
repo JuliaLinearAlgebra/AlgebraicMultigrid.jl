@@ -1,5 +1,6 @@
 using AMG
 using Base.Test
+using JLD
 
 @testset "Strength of connection" begin
 
@@ -19,10 +20,16 @@ end
 # Ruge-Stuben splitting
 S = poisson(7)
 @test split_nodes(RS(), S) == [0, 1, 0, 1, 0, 1, 0]
-
+@show "buzz"
 srand(0)
 S = sprand(10,10,0.1); S = S + S'
 @test split_nodes(RS(), S) ==  [0, 1, 1, 0, 0, 0, 0, 0, 1, 1]
+
+a = load("thing.jld")["G"]
+S = AMG.strength_of_connection(AMG.Classical(0.25), a)
+@test split_nodes(RS(), S) == [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0,
+0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0,
+1, 0]
 
 end
 
