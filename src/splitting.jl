@@ -20,7 +20,7 @@ function RS_CF_splitting(S::SparseMatrixCSC)
 
     # compute lambdas - number of neighbors
     for i = 1:n
-        lambda[i] = Tp[i+1] - Tp[i]
+        lambda[i] = Sp[i+1] - Sp[i]
     end
 
 	interval_ptr = zeros(Int, n+1)
@@ -30,7 +30,7 @@ function RS_CF_splitting(S::SparseMatrixCSC)
 
 	# Number of nodes with a certain neighbor count
     for i = 1:n
-        interval_count[lambda[i]+1] += 1
+        interval_count[lambda[i] + 1] += 1
     end
 	csum = 0
     for i = 1:n
@@ -39,7 +39,7 @@ function RS_CF_splitting(S::SparseMatrixCSC)
         interval_count[i] = 0
     end
     for i = 1:n
-        lambda_i = lambda[i]+1
+        lambda_i = lambda[i] + 1
         index    = interval_ptr[lambda_i] + interval_count[lambda_i]
         index_to_node[index+1] = i
         node_to_index[i]     = index+1
@@ -54,10 +54,6 @@ function RS_CF_splitting(S::SparseMatrixCSC)
             splitting[i] = F_NODE
 		end
     end
-	@show lambda
-	@show node_to_index
-	@show index_to_node
-	@show interval_ptr
 
 	for top_index = n_nodes:-1:1
 		i = index_to_node[top_index]
@@ -107,7 +103,7 @@ function RS_CF_splitting(S::SparseMatrixCSC)
 					# move j to the beginning of its current interval
 					lambda_j = lambda[row] + 1
 					old_pos  = node_to_index[row]
-					new_pos  = interval_ptr[lambda_j]
+					new_pos  = interval_ptr[lambda_j] + 1
 
 					node_to_index[index_to_node[old_pos]] = new_pos
 					node_to_index[index_to_node[new_pos]] = old_pos
