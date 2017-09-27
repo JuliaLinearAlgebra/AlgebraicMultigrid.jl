@@ -27,7 +27,7 @@ S = sprand(10,10,0.1); S = S + S'
 
 a = load("thing.jld")["G"]
 S = AMG.strength_of_connection(AMG.Classical(0.25), a)
-split_nodes(RS(), S) == [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0,
+@test split_nodes(RS(), S) == [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0,
 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0,
 1, 0]
 
