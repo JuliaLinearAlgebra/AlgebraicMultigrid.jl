@@ -54,6 +54,11 @@ function RS_CF_splitting(S::SparseMatrixCSC)
             splitting[i] = F_NODE
 		end
     end
+	@show lambda
+	@show interval_ptr
+	@show interval_count
+	@show node_to_index
+	@show index_to_node
 
 	for top_index = n_nodes:-1:1
 		i = index_to_node[top_index]
@@ -71,11 +76,17 @@ function RS_CF_splitting(S::SparseMatrixCSC)
 
 					for k in nzrange(S, row)
 						rowk = S.rowval[k]
+						@show rowk
+						if rowk == 83
+							@show S[:, row]
+							@show T[:, row]
+						end
 						if splitting[rowk] == U_NODE
 							lambda[rowk] >= n_nodes - 1 && continue
 							lambda_k = lambda[rowk] + 1
 						  	old_pos  = node_to_index[rowk]
 						  	new_pos  = interval_ptr[lambda_k] + interval_count[lambda_k]# - 1
+							@show new_pos
 
 						  	node_to_index[index_to_node[old_pos]] = new_pos
 						  	node_to_index[index_to_node[new_pos]] = old_pos

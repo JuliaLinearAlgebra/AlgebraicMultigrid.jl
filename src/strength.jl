@@ -21,9 +21,17 @@ function strength_of_connection{T}(c::Classical{T}, A::SparseMatrixCSC)
             row = A.rowval[j]
             val = A.nzval[j]
             if abs(val) >= threshold
+                if row != i
+                    push!(I, row)
+                    push!(J, i)
+                    push!(V, abs(val))
+                end
+            end
+
+            if row == i
                 push!(I, row)
                 push!(J, i)
-                push!(V, abs(val))
+                push!(V, val)
             end
         end
     end
