@@ -2,16 +2,23 @@ using AMG
 using Base.Test
 using JLD
 
+graph = load("test.jld")["G"]
+ref_S = load("ref_S_test.jld")["G"]
+ref_split = readdlm("ref_split_test.txt")
+
 @testset "Strength of connection" begin
 
 # classical strength of connection
 A = poisson(5)
-X = strength_of_connection(Classical(0.2), A)
-@test full(X) == [ 1.0  0.5  0.0  0.0  0.0
+S = strength_of_connection(Classical(0.2), A)
+@test full(S) == [ 1.0  0.5  0.0  0.0  0.0
                    0.5  1.0  0.5  0.0  0.0
                    0.0  0.5  1.0  0.5  0.0
                    0.0  0.0  0.5  1.0  0.5
                    0.0  0.0  0.0  0.5  1.0 ]
+S = strength_of_connection(Classical(0.25), graph)
+diff = S - ref_S
+@test maximum(diff) < 1e-10
 
 end
 
@@ -30,6 +37,8 @@ S = AMG.strength_of_connection(AMG.Classical(0.25), a)
 @test split_nodes(RS(), S) == [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0,
 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0,
 1, 0]
+
+@test split_nodes(RS(), ref_S) == Int.(vec(ref_split))
 
 end
 

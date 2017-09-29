@@ -64,13 +64,14 @@ function RS_CF_splitting(S::SparseMatrixCSC)
 		else
 			@assert splitting[i] == U_NODE
 			splitting[i] = C_NODE
-			for j in nzrange(T, i)
-				row = T.rowval[j]
+			for j in nzrange(S, i)
+				row = S.rowval[j]
 				if splitting[row] == U_NODE
 					splitting[row] = F_NODE
 
-					for k in nzrange(S, row)
-						rowk = S.rowval[k]
+					for k in nzrange(T, row)
+						rowk = T.rowval[k]
+
 						if splitting[rowk] == U_NODE
 							lambda[rowk] >= n_nodes - 1 && continue
 							lambda_k = lambda[rowk] + 1
@@ -92,8 +93,9 @@ function RS_CF_splitting(S::SparseMatrixCSC)
 					end
 				end
 			end
-			for j in nzrange(S, i)
-				row = S.rowval[j]
+
+			for j in nzrange(T, i)
+				row = T.rowval[j]
 				if splitting[row] == U_NODE
 
 					lambda[row] == 0 && continue
