@@ -67,13 +67,15 @@ end
 A = poisson(1000)
 A = float.(A) #FIXME
 ml = AMG.ruge_stuben(A)
-@test length(ml.levels) == 8
-s = [1000, 500, 250, 125, 62, 31, 15, 7]
-n = [2998, 1498, 748, 373, 184, 91, 43, 19]
-for i = 1:8
+@test length(ml) == 8
+s = [1000, 500, 250, 125, 62, 31, 15]
+n = [2998, 1498, 748, 373, 184, 91, 43]
+for i = 1:7
     @test size(ml.levels[i].A, 1) == s[i]
     @test nnz(ml.levels[i].A) == n[i]
 end
+@test size(ml.final_A, 1) == 7
+@test nnz(ml.final_A) == 19
 end
 
 @testset "Solver" begin
