@@ -31,7 +31,7 @@ end
 
 function extend_heirarchy!(levels::Vector{Level}, strength, CF, A)
     S, T = strength_of_connection(strength, A)
-    splitting = split_nodes(CF, S, T)
+    splitting = split_nodes(CF, S)
     P, R = direct_interpolation(A, T, splitting)
     push!(levels, Level(A, P, R))
     A = R * A * P

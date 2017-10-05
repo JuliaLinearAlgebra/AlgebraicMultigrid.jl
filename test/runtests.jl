@@ -39,7 +39,7 @@ S, T = AMG.strength_of_connection(AMG.Classical(0.25), a)
 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0,
 1, 0]
 
-@test split_nodes(RS(), ref_S, ref_S') == Int.(vec(ref_split))
+@test split_nodes(RS(), ref_S) == Int.(vec(ref_split))
 
 end
 

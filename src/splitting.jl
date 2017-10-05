@@ -4,8 +4,24 @@ const U_NODE = 2
 
 struct RS
 end
-split_nodes(x, S) = split_nodes(x, S, S')
-split_nodes(::RS, S::SparseMatrixCSC, T::SparseMatrixCSC) = RS_CF_splitting(S - spdiagm(diag(S)), T - spdiagm(diag(T)))
+#=function split_nodes(::RS, S)
+	n = size(S, 1)
+	for i = 1:n
+		for j in nzrange(S, i)
+			row = S.rowval[j]
+			if row == i
+				S.nzval[j] = 0
+			end
+		end
+	end
+	i, j, v = findnz(S)
+	RS_CF_splitting(sparse(i,j,v,n,n), sparse(j,i,v,n,n))
+end=#
+function split_nodes(::RS, S)
+	T = S'
+	RS_CF_splitting(S - spdiagm(diag(S)), T - spdiagm(diag(T)))
+end
+
 function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 
 	m,n = size(S)
