@@ -116,8 +116,6 @@ function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 
 					lambda[row] == 0 && continue
 
-					# assert(lambda[j] > 0);//this would cause problems!
-
 					# move j to the beginning of its current interval
 					lambda_j = lambda[row] + 1
 					old_pos  = node_to_index[row]

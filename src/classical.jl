@@ -42,12 +42,11 @@ function direct_interpolation(A, T, splitting)
     fill!(T.nzval, 1.)
     T = A .* T
     Pp = rs_direct_interpolation_pass1(T, A, splitting)
-    Pp = Pp .+ 1
+    Pp .= Pp .+ 1
 
     Px, Pj, Pp = rs_direct_interpolation_pass2(A, T, splitting, Pp)
 
-    # Px .= abs.(Px)
-    Pj = Pj .+ 1
+    Pj .= Pj .+ 1
 
     R = SparseMatrixCSC(maximum(Pj), size(A, 1), Pp, Pj, Px)
     P = R'
