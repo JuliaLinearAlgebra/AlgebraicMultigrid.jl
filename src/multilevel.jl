@@ -4,8 +4,8 @@ struct Level{Ti,Tv}
     R::SparseMatrixCSC{Ti,Tv}
 end
 
-struct MultiLevel{L, S, Pre, Post, Ti, Tv}
-    levels::Vector{L}
+struct MultiLevel{S, Pre, Post, Ti, Tv}
+    levels::Vector{Level{Ti,Tv}}
     final_A::SparseMatrixCSC{Ti,Tv}
     coarse_solver::S
     presmoother::Pre
@@ -16,7 +16,7 @@ abstract type CoarseSolver end
 struct Pinv <: CoarseSolver
 end
 
-MultiLevel(l::Vector{Level}, A, presmoother, postsmoother; coarse_solver = Pinv()) =
+MultiLevel{Ti,Tv}(l::Vector{Level{Ti,Tv}}, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother; coarse_solver = Pinv()) =
     MultiLevel(l, A, coarse_solver, presmoother, postsmoother)
 Base.length(ml) = length(ml.levels) + 1
 

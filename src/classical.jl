@@ -7,7 +7,7 @@ struct Solver{S,T,P,PS}
     max_coarse::Int64
 end
 
-function ruge_stuben(A::SparseMatrixCSC;
+function ruge_stuben{Ti,Tv}(A::SparseMatrixCSC{Ti,Tv};
                 strength = Classical(0.25),
                 CF = RS(),
                 presmoother = GaussSeidel(),
@@ -18,7 +18,7 @@ function ruge_stuben(A::SparseMatrixCSC;
     s = Solver(strength, CF, presmoother,
                 postsmoother, max_levels, max_levels)
 
-    levels = Vector{Level}()
+    levels = Vector{Level{Ti,Tv}}()
 
     while length(levels) < max_levels
         A = extend_heirarchy!(levels, strength, CF, A)
@@ -29,7 +29,7 @@ function ruge_stuben(A::SparseMatrixCSC;
     MultiLevel(levels, A, presmoother, postsmoother)
 end
 
-function extend_heirarchy!(levels::Vector{Level}, strength, CF, A)
+function extend_heirarchy!{Ti,Tv}(levels::Vector{Level{Ti,Tv}}, strength, CF, A::SparseMatrixCSC{Ti,Tv})
     S, T = strength_of_connection(strength, A)
     splitting = split_nodes(CF, S)
     P, R = direct_interpolation(A, T, splitting)
