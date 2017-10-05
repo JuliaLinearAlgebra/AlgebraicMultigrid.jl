@@ -177,11 +177,15 @@ function rs_direct_interpolation_pass1(S, A, splitting)
         m[i] = sum
         sum += splitting[i]
     end
-    l = issymmetric(S)? Bp[n]: Bp[n] + 1
-    for i = 1:l
+    #@show m
+    #@show Bj
+    #l = issymmetric(S)? Bp[n]: Bp[n] + 1
+    #@show l
+    #for i = 1:l
         #Bj[i] == 0 && continue
-        Bj[i] = m[Bj[i]]
-    end
+    #    Bj[i] = m[Bj[i]]
+    #end
+    Bj .= m[Bj]
 
     #=Ap = A.colptr
     Aj = A.rowval

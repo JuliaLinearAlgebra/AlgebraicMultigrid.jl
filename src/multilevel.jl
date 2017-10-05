@@ -35,9 +35,9 @@ function Base.show(io::IO, ml::MultiLevel)
     str = """
     Multilevel Solver
     -----------------
-    Operator Complexity: $op
-    Grid Complexity: $g
-    No. of Levels: $(size(ml.levels, 1))
+    Operator Complexity: $(round(op, 3))
+    Grid Complexity: $(round(g, 3))
+    No. of Levels: $(length(ml))
     Coarse Solver: $c
     Level     Unknowns     NonZeros
     -----     --------     --------

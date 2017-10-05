@@ -2,6 +2,8 @@ using AMG
 using Base.Test
 using JLD
 
+@testset "AMG Tests" begin
+
 graph = load("test.jld")["G"]
 ref_S = load("ref_S_test.jld")["G"]
 ref_split = readdlm("ref_split_test.txt")
@@ -27,7 +29,6 @@ end
 # Ruge-Stuben splitting
 S = poisson(7)
 @test split_nodes(RS(), S) == [0, 1, 0, 1, 0, 1, 0]
-@show "buzz"
 srand(0)
 S = sprand(10,10,0.1); S = S + S'
 @test split_nodes(RS(), S) ==  [0, 1, 1, 0, 0, 0, 0, 0, 1, 1]
@@ -54,7 +55,9 @@ P, R = AMG.direct_interpolation(A, copy(A), splitting)
               0.0  1.0  0.0
               0.0  0.5  0.5
               0.0  0.0  1.0 ]
-
+A = load("thing.jld")["G"]
+ml = ruge_stuben(A)
+@test size(ml.levels[2].A, 1) == 19
 end
 
 @testset "Coarse Solver" begin
@@ -76,6 +79,22 @@ for i = 1:7
 end
 @test size(ml.final_A, 1) == 7
 @test nnz(ml.final_A) == 19
+
+A = load("randlap.jld")["G"]
+ml = ruge_stuben(A)
+@test length(ml) == 3
+s = [100, 17]
+n = [2066, 289]
+for i = 1:2
+    @test size(ml.levels[i].A, 1) == s[i]
+    @test nnz(ml.levels[i].A) == n[i]
+end
+@test size(ml.final_A, 1) == 2
+@test nnz(ml.final_A) == 4
+@test round(AMG.operator_complexity(ml), 3) ≈ 1.142
+@test round(AMG.grid_complexity(ml), 3) ≈ 1.190
+
+
 end
 
 @testset "Solver" begin
@@ -84,4 +103,12 @@ A = float.(A)
 ml = ruge_stuben(A)
 x = solve(ml, A * ones(1000))
 @test sum(abs2, x - ones(1000)) < 1e-10
+
+A = load("randlap.jld")["G"]
+ml = ruge_stuben(A)
+x = solve(ml, A * ones(100))
+@test sum(abs2, x - zeros(100)) < 1e-10
+
+end
+
 end
