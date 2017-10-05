@@ -12,13 +12,13 @@ ref_split = readdlm("ref_split_test.txt")
 
 # classical strength of connection
 A = poisson(5)
-S = strength_of_connection(Classical(0.2), A)
+S, T = strength_of_connection(Classical(0.2), A)
 @test full(S) == [ 1.0  0.5  0.0  0.0  0.0
                    0.5  1.0  0.5  0.0  0.0
                    0.0  0.5  1.0  0.5  0.0
                    0.0  0.0  0.5  1.0  0.5
                    0.0  0.0  0.0  0.5  1.0 ]
-S = strength_of_connection(Classical(0.25), graph)
+S, T = strength_of_connection(Classical(0.25), graph)
 diff = S - ref_S
 @test maximum(diff) < 1e-10
 
@@ -34,7 +34,7 @@ S = sprand(10,10,0.1); S = S + S'
 @test split_nodes(RS(), S) ==  [0, 1, 1, 0, 0, 0, 0, 0, 1, 1]
 
 a = load("thing.jld")["G"]
-S = AMG.strength_of_connection(AMG.Classical(0.25), a)
+S, T = AMG.strength_of_connection(AMG.Classical(0.25), a)
 @test split_nodes(RS(), S) == [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0,
 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0,
 1, 0]

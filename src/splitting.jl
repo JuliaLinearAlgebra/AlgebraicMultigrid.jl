@@ -4,15 +4,31 @@ const U_NODE = 2
 
 struct RS
 end
+#=function split_nodes(::RS, S)
+	n = size(S, 1)
+	for i = 1:n
+		for j in nzrange(S, i)
+			row = S.rowval[j]
+			if row == i
+				S.nzval[j] = 0
+			end
+		end
+	end
+	i, j, v = findnz(S)
+	RS_CF_splitting(sparse(i,j,v,n,n), sparse(j,i,v,n,n))
+end=#
+function split_nodes(::RS, S)
+	T = S'
+	RS_CF_splitting(S - spdiagm(diag(S)), T - spdiagm(diag(T)))
+end
 
-split_nodes(::RS, S::SparseMatrixCSC) = RS_CF_splitting(S - spdiagm(diag(S)))
-function RS_CF_splitting(S::SparseMatrixCSC)
+function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 
 	m,n = size(S)
 
 	n_nodes = n
 	lambda = zeros(Int, n)
-	T = S'
+
 	Tp = T.colptr
 	Tj = T.rowval
 	Sp = S.colptr
@@ -100,8 +116,6 @@ function RS_CF_splitting(S::SparseMatrixCSC)
 
 					lambda[row] == 0 && continue
 
-					# assert(lambda[j] > 0);//this would cause problems!
-
 					# move j to the beginning of its current interval
 					lambda_j = lambda[row] + 1
 					old_pos  = node_to_index[row]
@@ -125,97 +139,3 @@ function RS_CF_splitting(S::SparseMatrixCSC)
 	end
 	splitting
 end
-
-
-    # Now add elements to C and F, in descending order of lambda
-    #=for top_index = n_nodes:-1:1
-        i        = index_to_node[top_index]
-        lambda_i = lambda[i] + 1
-
-        # if (n_nodes == 4)
-        #    std::cout << "selecting node #" << i << " with lambda " << lambda[i] << std::endl;
-
-        # remove i from its interval
-        interval_count[lambda_i] -= 1
-
-        if splitting[i] == F_NODE
-            continue
-        else
-
-            @assert splitting[i] == U_NODE
-
-            splitting[i] = C_NODE
-
-            # For each j in S^T_i /\ U
-            for jj = Tp[i]:Tp[i+1]-1
-				#jj > length(Tp) && continue
-
-                j = Tj[jj]
-
-                if splitting[j] == U_NODE
-                    splitting[j] = F_NODE
-
-                    # For each k in S_j /\ U
-                    for kk = Sp[j]: Sp[j+1]-1
-						# kk > length(Sj) && continue
-                        k = Sj[kk]
-
-                        if splitting[k] == U_NODE
-                            # move k to the end of its current interval
-                            lambda[k] >= n_nodes - 1 && continue
-
-                            lambda_k = lambda[k] + 1
-                            old_pos  = node_to_index[k]
-                            new_pos  = interval_ptr[lambda_k] + interval_count[lambda_k]# - 1
-
-                            node_to_index[index_to_node[old_pos]] = new_pos
-                            node_to_index[index_to_node[new_pos]] = old_pos
-                            (index_to_node[old_pos], index_to_node[new_pos]) = (index_to_node[new_pos], index_to_node[old_pos])
-
-                            # update intervals
-                            interval_count[lambda_k]   -= 1
-                            interval_count[lambda_k+1] += 1 # invalid write!
-                            interval_ptr[lambda_k+1]    = new_pos - 1
-
-                            # increment lambda_k
-                            lambda[k] += 1
-                        end
-					end
-				end
-			end
-
-            # For each j in S_i /\ U
-            for jj = Sp[i]: Sp[i+1] - 1
-				# jj > length(Sj) && continue
-
-                j = Sj[jj]
-
-                if splitting[j] == U_NODE            # decrement lambda for node j
-
-                    lambda[j] == 0 && continue
-
-                    # assert(lambda[j] > 0);//this would cause problems!
-
-                    # move j to the beginning of its current interval
-                    lambda_j = lambda[j] + 1
-                    old_pos  = node_to_index[j]
-                    new_pos  = interval_ptr[lambda_j]
-
-                    node_to_index[index_to_node[old_pos]] = new_pos
-                    node_to_index[index_to_node[new_pos]] = old_pos
-                    (index_to_node[old_pos],index_to_node[new_pos]) = (index_to_node[new_pos],index_to_node[old_pos])
-
-                    # update intervals
-                    interval_count[lambda_j]   -= 1
-                    interval_count[lambda_j-1] += 1
-                    interval_ptr[lambda_j]     += 1
-                    interval_ptr[lambda_j-1]    = interval_ptr[lambda_j] - interval_count[lambda_j-1]
-
-                    # decrement lambda_j
-                    lambda[j] -= 1
-                end
-            end
-        end
-    end
-	splitting
-end=#
