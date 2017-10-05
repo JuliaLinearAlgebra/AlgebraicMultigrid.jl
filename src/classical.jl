@@ -59,23 +59,6 @@ end
 function rs_direct_interpolation_pass1(T, A, splitting)
 
      Bp = zeros(Int, size(A.colptr))
-     #=Sp = S.colptr
-     Sj = S.rowval
-     n_nodes = size(A, 1)
-     nnz = 0
-     for i = 1:n_nodes
-         if splitting[i] == C_NODE
-             nnz += 1
-         else
-            for jj = Sp[i]:Sp[i+1]
-                jj > length(Sj) && continue
-                if splitting[Sj[jj]] == C_NODE && Sj[jj] != i
-                    nnz += 1
-                end
-            end
-        end
-         Bp[i+1] = nnz
-     end=#
      n = size(A, 1)
      nnz = 0
      for i = 1:n
@@ -175,105 +158,7 @@ function rs_direct_interpolation_pass1(T, A, splitting)
         m[i] = sum
         sum += splitting[i]
     end
-    #@show m
-    #@show Bj
-    #l = issymmetric(S)? Bp[n]: Bp[n] + 1
-    #@show l
-    #for i = 1:l
-        #Bj[i] == 0 && continue
-    #    Bj[i] = m[Bj[i]]
-    #end
     Bj .= m[Bj]
-
-    #=Ap = A.colptr
-    Aj = A.rowval
-    Ax = A.nzval
-    Sp = S.colptr
-    Sj = S.rowval
-    Sx = S.nzval
-    Bj = zeros(Ti, Bp[end])
-    Bx = zeros(Float64, Bp[end])
-    n_nodes = size(A, 1)
-
-    for i = 1:n_nodes
-        if splitting[i] == C_NODE
-            Bj[Bp[i]] = i
-            Bx[Bp[i]] = 1
-        else
-            sum_strong_pos = 0
-            sum_strong_neg = 0
-            for jj = Sp[i]: Sp[i+1]
-                jj > length(Sj) && continue
-                if splitting[Sj[jj]] == C_NODE && Sj[jj] != i
-                    if Sx[jj] < 0
-                        sum_strong_neg += Sx[jj]
-                    else
-                        sum_strong_pos += Sx[jj]
-                    end
-                end
-            end
-
-            sum_all_pos = 0
-            sum_all_neg = 0
-            diag = 0
-            for jj = Ap[i]:Ap[i+1]
-                jj > length(Aj) && continue
-                if Aj[jj] == i
-                    @show Ax[jj]
-                    diag += Ax[jj]
-                else
-                    if Ax[jj] < 0
-                        sum_all_neg += Ax[jj]
-                    else
-                        sum_all_pos += Ax[jj]
-                    end
-                end
-            end
-
-            alpha = sum_all_neg / sum_strong_neg
-            beta  = sum_all_pos / sum_strong_pos
-            @show alpha
-            @show beta
-            @show diag
-
-            if sum_strong_pos == 0
-                diag += sum_all_pos
-                beta = 0
-            end
-
-            neg_coeff = -1 * alpha / diag
-            pos_coeff = -1 * beta / diag
-
-            @show neg_coeff
-            @show pos_coeff
-
-            nnz = Bp[i]
-            for jj = Sp[i]:Sp[i+1]
-                jj > length(Sj) && continue
-                if splitting[Sj[jj]] == C_NODE && Sj[jj] != i
-                    Bj[nnz] = Sj[jj]
-                    if Sx[jj] < 0
-                        Bx[nnz] = neg_coeff * Sx[jj]
-                    else
-                        Bx[nnz] = pos_coeff * Sx[jj]
-                    end
-                    @show Bx[nnz]
-                    nnz += 1
-                end
-            end
-        end
-    end
-
-   m = zeros(Ti, n_nodes)
-   sum = 0
-   for i = 1:n_nodes
-       m[i] = sum
-       sum += splitting[i]
-   end
-   for i = 1:Bp[n_nodes]
-       Bj[i] == 0 && continue
-       Bj[i] = m[Bj[i]]
-   end =#
 
    Bx, Bj, Bp
 end
