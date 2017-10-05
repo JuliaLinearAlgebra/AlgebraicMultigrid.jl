@@ -4,8 +4,9 @@ struct Level{Ti,Tv}
     R::SparseMatrixCSC{Ti,Tv}
 end
 
-struct MultiLevel{L, S, Pre, Post}
+struct MultiLevel{L, S, Pre, Post, Ti, Tv}
     levels::Vector{L}
+    final_A::SparseMatrixCSC{Ti,Tv}
     coarse_solver::S
     presmoother::Pre
     postsmoother::Post
@@ -15,25 +16,28 @@ abstract type CoarseSolver end
 struct Pinv <: CoarseSolver
 end
 
-MultiLevel(l::Vector{Level}, presmoother, postsmoother; coarse_solver = Pinv()) =
-    MultiLevel(l, coarse_solver, presmoother, postsmoother)
+MultiLevel(l::Vector{Level}, A, presmoother, postsmoother; coarse_solver = Pinv()) =
+    MultiLevel(l, A, coarse_solver, presmoother, postsmoother)
+Base.length(ml) = length(ml.levels) + 1
 
 function Base.show(io::IO, ml::MultiLevel)
-    op = operator_complexity(ml.levels)
-    g = grid_complexity(ml.levels)
+    op = operator_complexity(ml)
+    g = grid_complexity(ml)
     c = ml.coarse_solver
-    total_nnz = sum(nnz(level.A) for level in ml.levels)
+    total_nnz = sum(nnz(level.A) for level in ml.levels) + nnz(ml.final_A)
     lstr = ""
     for (i, level) in enumerate(ml.levels)
         lstr = lstr *
             @sprintf "   %2d   %10d   %10d [%5.2f%%]\n" i size(level.A, 1) nnz(level.A) (100 * nnz(level.A) / total_nnz)
     end
+    lstr = lstr *
+        @sprintf "   %2d   %10d   %10d [%5.2f%%]" length(ml.levels) + 1 size(ml.final_A, 1) nnz(ml.final_A) (100 * nnz(ml.final_A) / total_nnz)
     str = """
     Multilevel Solver
     -----------------
-    Operator Complexity: $op
-    Grid Complexity: $g
-    No. of Levels: $(size(ml.levels, 1))
+    Operator Complexity: $(round(op, 3))
+    Grid Complexity: $(round(g, 3))
+    No. of Levels: $(length(ml))
     Coarse Solver: $c
     Level     Unknowns     NonZeros
     -----     --------     --------
@@ -42,12 +46,12 @@ function Base.show(io::IO, ml::MultiLevel)
     print(io, str)
 end
 
-function operator_complexity(ml::Vector{Level})
-    sum(nnz(level.A) for level in ml) / nnz(ml[1].A)
+function operator_complexity(ml::MultiLevel)
+    (sum(nnz(level.A) for level in ml.levels) + nnz(ml.final_A)) / nnz(ml.levels[1].A)
 end
 
-function grid_complexity(ml::Vector{Level})
-    sum(size(level.A, 1) for level in ml) / size(ml[1].A, 1)
+function grid_complexity(ml::MultiLevel)
+    (sum(size(level.A, 1) for level in ml.levels) + size(ml.final_A, 1)) / size(ml.levels[1].A, 1)
 end
 
 abstract type Cycle end
@@ -83,8 +87,8 @@ function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl)
     coarse_b = ml.levels[lvl].R * res
     coarse_x = zeros(T, size(coarse_b))
 
-    if lvl == length(ml.levels) - 1
-        coarse_x = coarse_solver(ml.coarse_solver, ml.levels[end].A, coarse_b)
+    if lvl == length(ml.levels)
+        coarse_x = coarse_solver(ml.coarse_solver, ml.final_A, coarse_b)
     else
         coarse_x = __solve(v, ml, coarse_x, coarse_b, lvl + 1)
     end

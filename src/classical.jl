@@ -22,11 +22,11 @@ function ruge_stuben(A::SparseMatrixCSC;
 
     while length(levels) < max_levels
         A = extend_heirarchy!(levels, strength, CF, A)
-        if size(levels[end].A, 1) < max_coarse
+        if size(A, 1) < max_coarse
             break
         end
     end
-    MultiLevel(levels, presmoother, postsmoother)
+    MultiLevel(levels, A, presmoother, postsmoother)
 end
 
 function extend_heirarchy!(levels::Vector{Level}, strength, CF, A)
@@ -44,7 +44,7 @@ function direct_interpolation{T,V}(A::T, S::T, splitting::Vector{V})
     Pp = rs_direct_interpolation_pass1(S, A, splitting)
     Pp = Pp .+ 1
 
-    Px, Pj = rs_direct_interpolation_pass2(A, S, splitting, Pp)
+    Px, Pj, Pp = rs_direct_interpolation_pass2(A, S, splitting, Pp)
 
     # Px .= abs.(Px)
     Pj = Pj .+ 1
@@ -59,6 +59,7 @@ end
 function rs_direct_interpolation_pass1(S, A, splitting)
 
      Bp = zeros(Int, size(A.colptr))
+     T = S'
      #=Sp = S.colptr
      Sj = S.rowval
      n_nodes = size(A, 1)
@@ -82,8 +83,8 @@ function rs_direct_interpolation_pass1(S, A, splitting)
          if splitting[i] == C_NODE
              nnz += 1
          else
-             for j in nzrange(S, i)
-                 row = S.rowval[j]
+             for j in nzrange(T, i)
+                 row = T.rowval[j]
                  if splitting[row] == C_NODE && row != i
                      nnz += 1
                 end
@@ -101,8 +102,9 @@ function rs_direct_interpolation_pass1(S, A, splitting)
                                                 Bp::Vector{Ti})
 
 
-    Bx = zeros(Float64, Bp[end])
-    Bj = zeros(Ti, Bp[end])
+    T = S'
+    Bx = zeros(Float64, Bp[end] - 1)
+    Bj = zeros(Ti, Bp[end] - 1)
 
     n = size(A, 1)
 
@@ -113,9 +115,9 @@ function rs_direct_interpolation_pass1(S, A, splitting)
         else
             sum_strong_pos = zero(Tv)
             sum_strong_neg = zero(Tv)
-            for j in nzrange(S, i)
-                row = S.rowval[j]
-                sval = S.nzval[j]
+            for j in nzrange(T, i)
+                row = T.rowval[j]
+                sval = T.nzval[j]
                 if splitting[row] == C_NODE && row != i
                     if sval < 0
                         sum_strong_neg += sval
@@ -153,9 +155,9 @@ function rs_direct_interpolation_pass1(S, A, splitting)
 
             nnz = Bp[i]
 
-            for j in nzrange(S, i)
-                row = S.rowval[j]
-                sval = S.nzval[j]
+            for j in nzrange(T, i)
+                row = T.rowval[j]
+                sval = T.nzval[j]
                 if splitting[row] == C_NODE && row != i
                     Bj[nnz] = row
                     if sval < 0
@@ -175,10 +177,15 @@ function rs_direct_interpolation_pass1(S, A, splitting)
         m[i] = sum
         sum += splitting[i]
     end
-    for i = 1:Bp[n]
-        Bj[i] == 0 && continue
-        Bj[i] = m[Bj[i]]
-    end
+    #@show m
+    #@show Bj
+    #l = issymmetric(S)? Bp[n]: Bp[n] + 1
+    #@show l
+    #for i = 1:l
+        #Bj[i] == 0 && continue
+    #    Bj[i] = m[Bj[i]]
+    #end
+    Bj .= m[Bj]
 
     #=Ap = A.colptr
     Aj = A.rowval
