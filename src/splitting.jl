@@ -4,15 +4,15 @@ const U_NODE = 2
 
 struct RS
 end
-
-split_nodes(::RS, S::SparseMatrixCSC) = RS_CF_splitting(S - spdiagm(diag(S)))
-function RS_CF_splitting(S::SparseMatrixCSC)
+split_nodes(x, S) = split_nodes(x, S, S')
+split_nodes(::RS, S::SparseMatrixCSC, T::SparseMatrixCSC) = RS_CF_splitting(S - spdiagm(diag(S)), T - spdiagm(diag(T)))
+function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 
 	m,n = size(S)
 
 	n_nodes = n
 	lambda = zeros(Int, n)
-	T = S'
+
 	Tp = T.colptr
 	Tj = T.rowval
 	Sp = S.colptr

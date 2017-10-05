@@ -30,21 +30,21 @@ function ruge_stuben(A::SparseMatrixCSC;
 end
 
 function extend_heirarchy!(levels::Vector{Level}, strength, CF, A)
-    S = strength_of_connection(strength, A)
-    splitting = split_nodes(CF, S)
-    P, R = direct_interpolation(A, S, splitting)
+    S, T = strength_of_connection(strength, A)
+    splitting = split_nodes(CF, S, T)
+    P, R = direct_interpolation(A, T, splitting)
     push!(levels, Level(A, P, R))
     A = R * A * P
 end
 
-function direct_interpolation{T,V}(A::T, S::T, splitting::Vector{V})
+function direct_interpolation(A, T, splitting)
 
-    fill!(S.nzval, 1.)
-    S = A .* S
-    Pp = rs_direct_interpolation_pass1(S, A, splitting)
+    fill!(T.nzval, 1.)
+    T = A .* T
+    Pp = rs_direct_interpolation_pass1(T, A, splitting)
     Pp = Pp .+ 1
 
-    Px, Pj, Pp = rs_direct_interpolation_pass2(A, S, splitting, Pp)
+    Px, Pj, Pp = rs_direct_interpolation_pass2(A, T, splitting, Pp)
 
     # Px .= abs.(Px)
     Pj = Pj .+ 1
@@ -56,10 +56,9 @@ function direct_interpolation{T,V}(A::T, S::T, splitting::Vector{V})
 end
 
 
-function rs_direct_interpolation_pass1(S, A, splitting)
+function rs_direct_interpolation_pass1(T, A, splitting)
 
      Bp = zeros(Int, size(A.colptr))
-     T = S'
      #=Sp = S.colptr
      Sj = S.rowval
      n_nodes = size(A, 1)
@@ -97,12 +96,11 @@ function rs_direct_interpolation_pass1(S, A, splitting)
 
 
  function rs_direct_interpolation_pass2{Tv, Ti}(A::SparseMatrixCSC{Tv,Ti},
-                                                S::SparseMatrixCSC{Tv,Ti},
+                                                T::SparseMatrixCSC{Tv, Ti},
                                                 splitting::Vector{Ti},
                                                 Bp::Vector{Ti})
 
 
-    T = S'
     Bx = zeros(Float64, Bp[end] - 1)
     Bj = zeros(Ti, Bp[end] - 1)
 

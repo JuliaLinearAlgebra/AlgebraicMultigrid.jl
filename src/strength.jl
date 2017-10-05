@@ -39,7 +39,8 @@ function strength_of_connection{T}(c::Classical{T}, A::SparseMatrixCSC)
 
     scale_cols_by_largest_entry!(S)
 
-    S'
+
+    S', S
 end
 
 function find_max_off_diag(neighbors, col)
