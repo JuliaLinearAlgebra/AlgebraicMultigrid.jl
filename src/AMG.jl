@@ -19,4 +19,7 @@ export solve
 include("classical.jl")
 export ruge_stuben
 
+include("preconditioner.jl")
+export aspreconditioner
+
 end # module

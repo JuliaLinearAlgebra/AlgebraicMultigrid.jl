@@ -65,6 +65,9 @@ function solve{T}(ml::MultiLevel, b::Vector{T}; maxiter = 100,
     residuals = Vector{T}()
     A = ml.levels[1].A
     normb = norm(b)
+    if normb != 0
+        tol *= normb
+    end
     push!(residuals, norm(b - A*x))
 
     lvl = 1
@@ -74,7 +77,7 @@ function solve{T}(ml::MultiLevel, b::Vector{T}; maxiter = 100,
         else
             x = __solve(cycle, ml, x, b, lvl)
         end
-        push!(residuals, norm(A*x - b))
+        push!(residuals, norm(b - A * x))
     end
     x
 end
