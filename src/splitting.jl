@@ -14,12 +14,11 @@ end
 			end
 		end
 	end
-	i, j, v = findnz(S)
 	RS_CF_splitting(sparse(i,j,v,n,n), sparse(j,i,v,n,n))
 end=#
 function split_nodes(::RS, S)
-	T = S'
-	RS_CF_splitting(S - spdiagm(diag(S)), T - spdiagm(diag(T)))
+	S = S - spdiagm(diag(S))
+	RS_CF_splitting(S, S')
 end
 
 function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
