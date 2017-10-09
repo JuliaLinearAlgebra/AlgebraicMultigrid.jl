@@ -4,14 +4,19 @@ struct Classical{T} <: Strength
 end
 Classical(;θ = 0.25) = Classical(θ)
 
-function strength_of_connection{T}(c::Classical{T}, A::SparseMatrixCSC)
+function strength_of_connection{T, Ti, Tv}(c::Classical{T}, A::SparseMatrixCSC{Tv, Ti})
 
     θ = c.θ
-    I = Int[]
-    J = Int[]
-    V = Float64[]
+    #I = Int[]
+    #J = Int[]
+    #V = Float64[]
 
     m, n = size(A)
+    nz = nnz(A)
+    I = zeros(Ti, nz)
+    J = zeros(Ti, nz)
+    V = zeros(float(Tv), nz)
+    k = 1
 
     for i = 1:n
         neighbors = A[:,i]
@@ -22,19 +27,31 @@ function strength_of_connection{T}(c::Classical{T}, A::SparseMatrixCSC)
             val = A.nzval[j]
             if abs(val) >= threshold
                 if row != i
-                    push!(I, row)
+                    #=push!(I, row)
                     push!(J, i)
-                    push!(V, abs(val))
+                    push!(V, abs(val))=#
+                    I[k] = row
+                    J[k] = i
+                    V[k] = abs(val)
+                    k += 1
                 end
             end
 
             if row == i
-                push!(I, row)
+                #=push!(I, row)
                 push!(J, i)
-                push!(V, val)
+                push!(V, val)=#
+                I[k] = row
+                J[k] = i
+                V[k] = val
+                k += 1
             end
         end
     end
+    deleteat!(I, k:nz)
+    deleteat!(J, k:nz)
+    deleteat!(V, k:nz)
+
     S = sparse(I, J, V, m, n)
 
     scale_cols_by_largest_entry!(S)
