@@ -127,7 +127,7 @@ function rs_direct_interpolation_pass1(T, A, splitting)
 
             if sum_strong_pos == 0
                 diag += sum_all_pos
-                beta = 0
+                beta = zero(beta)
             end
 
             neg_coeff = -1 * alpha / diag
@@ -152,7 +152,7 @@ function rs_direct_interpolation_pass1(T, A, splitting)
     end
 
     m = zeros(Ti, n)
-    sum = 0
+    sum = zero(eltype(m))
     for i = 1:n
         m[i] = sum
         sum += splitting[i]

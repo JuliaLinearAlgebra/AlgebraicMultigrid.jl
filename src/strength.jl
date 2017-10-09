@@ -50,7 +50,7 @@ function strength_of_connection{T, Ti, Tv}(c::Classical{T}, A::SparseMatrixCSC{T
 end
 
 function find_max_off_diag(A, i)
-    m = 0
+    m = zero(eltype(A))
     for j in nzrange(A, i)
         row = A.rowval[j]
         val = A.nzval[j]
