@@ -40,7 +40,7 @@ end
 function direct_interpolation(A, T, splitting)
 
     fill!(T.nzval, 1.)
-    T = A .* T
+    T .= A .* T
     Pp = rs_direct_interpolation_pass1(T, A, splitting)
     Pp .= Pp .+ 1
 

@@ -23,9 +23,8 @@ end
 
 function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 
-	m,n = size(S)
+	n = size(S,1)
 
-	n_nodes = n
 	lambda = zeros(Int, n)
 
 	Tp = T.colptr
@@ -70,7 +69,7 @@ function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 		end
     end
 
-	for top_index = n_nodes:-1:1
+	for top_index = n:-1:1
 		i = index_to_node[top_index]
 		lambda_i = lambda[i] + 1
 		interval_count[lambda_i] -= 1
@@ -88,7 +87,7 @@ function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 						rowk = T.rowval[k]
 
 						if splitting[rowk] == U_NODE
-							lambda[rowk] >= n_nodes - 1 && continue
+							lambda[rowk] >= n - 1 && continue
 							lambda_k = lambda[rowk] + 1
 						  	old_pos  = node_to_index[rowk]
 						  	new_pos  = interval_ptr[lambda_k] + interval_count[lambda_k]# - 1
