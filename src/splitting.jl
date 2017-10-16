@@ -16,16 +16,28 @@ end
 	end
 	RS_CF_splitting(sparse(i,j,v,n,n), sparse(j,i,v,n,n))
 end=#
+
+function remove_diag!(a)
+	n = size(a, 1)
+	for i = 1:n
+		for j in nzrange(a, i)
+			if a.rowval[j] == i
+				a.nzval[j] = 0
+			end
+   		end
+	end
+	dropzeros!(a)
+end
+
 function split_nodes(::RS, S)
-	S = S - spdiagm(diag(S))
+	remove_diag!(S)
 	RS_CF_splitting(S, S')
 end
 
 function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 
-	m,n = size(S)
+	n = size(S,1)
 
-	n_nodes = n
 	lambda = zeros(Int, n)
 
 	Tp = T.colptr
@@ -70,7 +82,7 @@ function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 		end
     end
 
-	for top_index = n_nodes:-1:1
+	for top_index = n:-1:1
 		i = index_to_node[top_index]
 		lambda_i = lambda[i] + 1
 		interval_count[lambda_i] -= 1
@@ -88,7 +100,7 @@ function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 						rowk = T.rowval[k]
 
 						if splitting[rowk] == U_NODE
-							lambda[rowk] >= n_nodes - 1 && continue
+							lambda[rowk] >= n - 1 && continue
 							lambda_k = lambda[rowk] + 1
 						  	old_pos  = node_to_index[rowk]
 						  	new_pos  = interval_ptr[lambda_k] + interval_count[lambda_k]# - 1
