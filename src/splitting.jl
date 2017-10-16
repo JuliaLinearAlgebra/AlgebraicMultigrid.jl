@@ -16,8 +16,21 @@ end
 	end
 	RS_CF_splitting(sparse(i,j,v,n,n), sparse(j,i,v,n,n))
 end=#
+
+function remove_diag!(a)
+	n = size(a, 1)
+	for i = 1:n
+		for j in nzrange(a, i)
+			if a.rowval[j] == i
+				a.nzval[j] = 0
+			end
+   		end
+	end
+	dropzeros!(a)
+end
+
 function split_nodes(::RS, S)
-	S = S - spdiagm(diag(S))
+	remove_diag!(S)
 	RS_CF_splitting(S, S')
 end
 
