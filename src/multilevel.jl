@@ -58,9 +58,10 @@ abstract type Cycle end
 struct V <: Cycle
 end
 
-function solve{T}(ml::MultiLevel, b::Vector{T}; maxiter = 100,
-                                                cycle = V(),
-                                                tol = 1e-5)
+function solve{T}(ml::MultiLevel, b::Vector{T},
+                                    maxiter = 100,
+                                    cycle = V(),
+                                    tol = 1e-5)
     x = zeros(T, size(b))
     residuals = Vector{T}()
     A = ml.levels[1].A
@@ -68,7 +69,7 @@ function solve{T}(ml::MultiLevel, b::Vector{T}; maxiter = 100,
     if normb != 0
         tol *= normb
     end
-    push!(residuals, norm(b - A*x))
+    push!(residuals, T(norm(b - A*x)))
 
     lvl = 1
     while length(residuals) <= maxiter && residuals[end] > tol
@@ -77,7 +78,7 @@ function solve{T}(ml::MultiLevel, b::Vector{T}; maxiter = 100,
         else
             x = __solve(cycle, ml, x, b, lvl)
         end
-        push!(residuals, norm(b - A * x))
+        push!(residuals, T(norm(b - A * x)))
     end
     x
 end
@@ -103,4 +104,5 @@ function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl)
     x
 end
 
-coarse_solver(::Pinv, A, b) = pinv(full(A)) * b
+coarse_solver{Tv,Ti}(::Pinv, A::SparseMatrixCSC{Tv,Ti}, b::Vector{Tv}) =
+                                                        pinv(full(A)) * b
