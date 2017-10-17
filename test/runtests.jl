@@ -2,6 +2,7 @@ using AMG
 using Base.Test
 using JLD
 using IterativeSolvers
+import AMG: V, coarse_solver, Pinv, Classical
 
 @testset "AMG Tests" begin
 
@@ -35,7 +36,7 @@ S = sprand(10,10,0.1); S = S + S'
 @test split_nodes(RS(), S) ==  [0, 1, 1, 0, 0, 0, 0, 0, 1, 1]
 
 a = load("thing.jld")["G"]
-S, T = AMG.strength_of_connection(AMG.Classical(0.25), a)
+S, T = AMG.strength_of_connection(Classical(0.25), a)
 @test split_nodes(RS(), S) == [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0,
 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0,
 1, 0]
@@ -62,9 +63,9 @@ ml = ruge_stuben(A)
 end
 
 @testset "Coarse Solver" begin
-A = poisson(10)
+A = float.(poisson(10))
 b = A * ones(10)
-@test sum(abs2, AMG.coarse_solver(AMG.Pinv(), A, b) - ones(10)) < 1e-6
+@test sum(abs2, coarse_solver(Pinv(), A, b) - ones(10)) < 1e-6
 end
 
 @testset "Multilevel" begin
@@ -120,7 +121,7 @@ p = aspreconditioner(ml)
 b = zeros(n)
 b[1] = 1
 b[2] = -1
-x = solve(p.ml, A * ones(n); maxiter = 1, tol = 1e-12)
+x = solve(p.ml, A * ones(n), 1, V(), 1e-12)
 diff = x - [  1.88664780e-16,   2.34982727e-16,   2.33917697e-16,
          8.77869044e-17,   7.16783490e-17,   1.43415460e-16,
          3.69199021e-17,   9.70950385e-17,   4.77034895e-17,
@@ -138,7 +139,7 @@ diff = x - [  1.88664780e-16,   2.34982727e-16,   2.33917697e-16,
         -6.76965535e-16,  -7.00643227e-16,  -6.23581397e-16,
         -7.03016682e-16]
 @test sum(abs2, diff) < 1e-8
-x = solve(p.ml, b; maxiter = 1, tol = 1e-12)
+x = solve(p.ml, b, 1, V(), 1e-12)
 diff = x - [ 0.76347046, -0.5498286 , -0.2705487 , -0.15047352, -0.10248021,
         0.60292674, -0.11497073, -0.08460548, -0.06931461,  0.38230708,
        -0.055664  , -0.04854558, -0.04577031,  0.09964325,  0.01825624,

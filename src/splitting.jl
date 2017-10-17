@@ -4,18 +4,6 @@ const U_NODE = 2
 
 struct RS
 end
-#=function split_nodes(::RS, S)
-	n = size(S, 1)
-	for i = 1:n
-		for j in nzrange(S, i)
-			row = S.rowval[j]
-			if row == i
-				S.nzval[j] = 0
-			end
-		end
-	end
-	RS_CF_splitting(sparse(i,j,v,n,n), sparse(j,i,v,n,n))
-end=#
 
 function remove_diag!(a)
 	n = size(a, 1)
