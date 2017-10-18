@@ -104,19 +104,23 @@ A = poisson(1000)
 A = float.(A)
 ml = ruge_stuben(A)
 x = solve(ml, A * ones(1000))
-@test sum(abs2, x - ones(1000)) < 1e-10
+@test sum(abs2, x - ones(1000)) < 1e-8
 
 A = load("randlap.jld")["G"]
-ml = ruge_stuben(A)
+smoother = GaussSeidel(ForwardSweep())
+ml = ruge_stuben(A, presmoother = smoother,
+                    postsmoother = smoother)
 x = solve(ml, A * ones(100))
-@test sum(abs2, x - zeros(100)) < 1e-10
+@test sum(abs2, x - zeros(100)) < 1e-8
 
 end
 
 @testset "Preconditioning" begin
 A = load("thing.jld")["G"]
 n = size(A, 1)
-ml = ruge_stuben(A)
+smoother = GaussSeidel(ForwardSweep())
+ml = ruge_stuben(A, presmoother = smoother,
+                    postsmoother = smoother)
 p = aspreconditioner(ml)
 b = zeros(n)
 b[1] = 1
