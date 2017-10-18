@@ -12,6 +12,7 @@ include("gallery.jl")
 export poisson
 
 include("smoother.jl")
+export GaussSeidel, SymmetricSweep, ForwardSweep, BackwardSweep
 
 include("multilevel.jl")
 export solve
