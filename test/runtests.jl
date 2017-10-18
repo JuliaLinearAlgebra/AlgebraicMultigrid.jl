@@ -100,23 +100,39 @@ end
 end
 
 @testset "Solver" begin
+fsmoother = GaussSeidel(ForwardSweep())
+
 A = poisson(1000)
 A = float.(A)
 ml = ruge_stuben(A)
 x = solve(ml, A * ones(1000))
-@test sum(abs2, x - ones(1000)) < 1e-10
+@test sum(abs2, x - ones(1000)) < 1e-8
+
+ml = ruge_stuben(A, presmoother = fsmoother,
+                     postsmoother = fsmoother)
+x = solve(ml, A * ones(1000))
+@test sum(abs2, x - ones(1000)) < 1e-8
+
 
 A = load("randlap.jld")["G"]
+
+ml = ruge_stuben(A, presmoother = fsmoother,
+                    postsmoother = fsmoother)
+x = solve(ml, A * ones(100))
+@test sum(abs2, x - zeros(100)) < 1e-8
+
 ml = ruge_stuben(A)
 x = solve(ml, A * ones(100))
-@test sum(abs2, x - zeros(100)) < 1e-10
+@test sum(abs2, x - zeros(100)) < 1e-6
 
 end
 
 @testset "Preconditioning" begin
 A = load("thing.jld")["G"]
 n = size(A, 1)
-ml = ruge_stuben(A)
+smoother = GaussSeidel(ForwardSweep())
+ml = ruge_stuben(A, presmoother = smoother,
+                    postsmoother = smoother)
 p = aspreconditioner(ml)
 b = zeros(n)
 b[1] = 1
@@ -163,5 +179,34 @@ diff = x - [ 0.82365077, -0.537589  , -0.30632349, -0.19370186, -0.14773294,
         0.04968258,  0.04968737,  0.05105749,  0.05009268,  0.04972329,
         0.04970173]
 @test sum(abs2, diff) < 1e-8
+
+# Symmetric GaussSeidel Smoothing
+
+ml = ruge_stuben(A)
+p = aspreconditioner(ml)
+
+x = cg(A, b, Pl = p, maxiter = 100_000, tol = 1e-6)
+diff = x - [0.823762, -0.537478, -0.306212, -0.19359, -0.147621, 0.685002,
+            -0.155389, -0.127703, -0.111867, 0.453735, -0.0856607, -0.0858715,
+            -0.0846678, 0.129962, 0.0281662, -0.0389642, -0.0593981, -0.0653311,
+            0.0545782, -0.0474255, -0.0519275, -0.0467483, -0.0448061, 0.056504,
+            0.0280386, -0.0227138, -0.0405172, -0.0431067, -0.0440778, 0.076042,
+            0.052232, 0.0447537, 0.05847, 0.0509098, 0.0484189, 0.0528356,
+            0.0503983, 0.0495933, 0.0497211, 0.0497731, 0.0497942, 0.049799,
+            0.0511691, 0.0502043, 0.0498349, 0.0498134]
+@test sum(abs2, diff) < 1e-8
+
+x = solve(ml, b, 1, V(), 1e-12)
+diff = x - [0.775725, -0.571202, -0.290989, -0.157001, -0.106981, 0.622652,
+            -0.122318, -0.0891874, -0.0709834, 0.392621, -0.055544, -0.0507485,
+            -0.0466376, 0.107175, 0.0267468, -0.0200843, -0.0282827, -0.0299929,
+            0.0420468, -0.0175585, -0.0181318, -0.0121591, -0.00902523, 0.0394795,
+            0.019981, -0.00270916, -0.0106855, -0.0093661, -0.00837619, 0.052532,
+            0.0301423, 0.0248904, 0.0333098, 0.0262179, 0.0246211, 0.026778,
+            0.0245746, 0.0238448, 0.0233892, 0.0231593, 0.0230526, 0.0229771,
+            0.0247913, 0.0238555, 0.0233681, 0.023096]
+@test sum(abs2, diff) < 1e-8
+
+
 end
 end
