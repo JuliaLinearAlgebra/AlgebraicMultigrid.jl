@@ -14,6 +14,7 @@ ref_split = readdlm("ref_split_test.txt")
 
 # classical strength of connection
 A = poisson(5)
+A = float.(A)
 S, T = strength_of_connection(Classical(0.2), A)
 @test full(S) == [ 1.0  0.5  0.0  0.0  0.0
                    0.5  1.0  0.5  0.0  0.0

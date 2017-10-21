@@ -9,11 +9,7 @@ function strength_of_connection{T, Ti, Tv}(c::Classical{T}, A::SparseMatrixCSC{T
     θ = c.θ
 
     m, n = size(A)
-    nz = nnz(A)
-    I = zeros(Ti, nz)
-    J = zeros(Ti, nz)
-    V = zeros(float(Tv), nz)
-    k = 1
+    S = deepcopy(A)
 
     for i = 1:n
         _m = find_max_off_diag(A, i)
@@ -21,28 +17,19 @@ function strength_of_connection{T, Ti, Tv}(c::Classical{T}, A::SparseMatrixCSC{T
         for j in nzrange(A, i)
             row = A.rowval[j]
             val = A.nzval[j]
-            if abs(val) >= threshold
-                if row != i
-                    I[k] = row
-                    J[k] = i
-                    V[k] = abs(val)
-                    k += 1
+
+            if row != i
+                if abs(val) >= threshold
+                    S.nzval[j] = abs(val)
+                else
+                    S.nzval[j] = 0
                 end
             end
 
-            if row == i
-                I[k] = row
-                J[k] = i
-                V[k] = val
-                k += 1
-            end
         end
     end
-    deleteat!(I, k:nz)
-    deleteat!(J, k:nz)
-    deleteat!(V, k:nz)
 
-    S = sparse(I, J, V, m, n)
+    dropzeros!(S)
 
     scale_cols_by_largest_entry!(S)
 
