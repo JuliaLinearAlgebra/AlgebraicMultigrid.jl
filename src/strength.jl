@@ -69,3 +69,44 @@ function scale_cols_by_largest_entry!(A::SparseMatrixCSC)
     end
     A
 end
+
+struct SymmetricStrength{T} <: Strength
+    θ::T
+end
+
+function strength_of_connection{T}(s::SymmetricStrength{T}, A)
+
+    θ = s.θ
+    S = deepcopy(A)
+    n = size(A, 1)
+    diags = Vector{eltype(A)}(n)
+
+    for i = 1:n
+        diag = zero(eltype(A))
+        for j in nzrange(A, i)
+            row = A.rowval[j]
+            val = A.nzval[j]
+            if row == i
+                diag += val
+            end
+        end
+        diags[i] = norm(diag)
+    end
+
+    for i = 1:n
+        eps_Aii = θ * θ * diags[i]
+        for j in nzrange(A, i)
+            row = A.rowval[j]
+            val = A.nzval[j]
+            if norm(val) < eps_Aii * diags[row]
+                S.nzval[j] = 0
+            end
+        end
+    end
+
+    dropzeros!(S)
+
+    scale_cols_by_largest_entry!(S)
+
+    S
+end
