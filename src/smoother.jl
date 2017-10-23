@@ -47,3 +47,37 @@ function gs!{T,Ti}(A::SparseMatrixCSC{T,Ti}, b::Vector{T}, x::Vector{T}, start, 
         end
     end
 end
+
+struct Jacobi{T} <: Smoother
+    ω::T
+end
+
+function jacobi!(A, x, b, ω, start, step, stop)
+
+    one = one(eltype(A))
+    temp = similar(x)
+
+    for i = start:step:stop
+        temp[i] = x[i]
+    end
+
+    for i = start:step:stop
+        rsum = zero(eltype(A))
+        diag = zero(eltype(A))
+
+        for j in nzrange(A, i)
+            row = A.nzval[j]
+            val = A.nzval[j]
+
+            if row == i
+                diag = val
+            else
+                rsum += val * temp[row]
+            end
+        end
+
+        if diag != 0
+            x[i] = (one - ω) * temp[i] + ω * ((b[i] - rsum) / diag)
+        end
+    end
+end

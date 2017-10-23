@@ -21,6 +21,9 @@ export solve
 include("classical.jl")
 export ruge_stuben
 
+include("aggregate.jl")
+export standard_aggregation
+
 # include("aggregation.jl")
 
 include("preconditioner.jl")
