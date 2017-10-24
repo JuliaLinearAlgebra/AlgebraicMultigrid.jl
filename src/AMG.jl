@@ -13,7 +13,8 @@ include("gallery.jl")
 export poisson
 
 include("smoother.jl")
-export GaussSeidel, SymmetricSweep, ForwardSweep, BackwardSweep
+export GaussSeidel, SymmetricSweep, ForwardSweep, BackwardSweep,
+        smooth_prolongator, JacobiProlongation
 
 include("multilevel.jl")
 export solve
@@ -26,8 +27,6 @@ export standard_aggregation
 
 include("aggregation.jl")
 export fit_candidates
-
-# include("aggregation.jl")
 
 include("preconditioner.jl")
 export aspreconditioner

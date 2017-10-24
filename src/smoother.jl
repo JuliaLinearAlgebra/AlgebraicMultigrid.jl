@@ -85,3 +85,45 @@ function jacobi!(A, x, b, ω, start, step, stop)
         end
     end
 end
+
+struct JacobiProlongation{T}
+    ω::T
+end
+
+struct DiagonalWeighting
+end
+
+function smooth_prolongator(j::JacobiProlongation,
+                                        A, T, S, B,
+                                        degree = 1,
+                                        weighting = DiagonalWeighting())
+    D_inv_S = weight(weighting, A, j.ω)
+    P = T
+    for i = 1:degree
+        P = P - (D_inv_S * P)
+    end
+    P
+end
+
+function weight(::DiagonalWeighting, S, ω)
+    D_inv = 1 ./ diag(S)
+    @show D_inv
+    D_inv_S = scale_rows(S, D_inv)
+    @show approximate_spectral_radius(D_inv_S)
+    (ω / approximate_spectral_radius(D_inv_S)) * D_inv_S
+end
+
+approximate_spectral_radius(A) =
+    eigs(A, maxiter = 15, tol = 0.01, ritzvec = false)[1][1] |> real
+
+function scale_rows!(ret, S, v)
+    n = size(S, 1)
+    for i = 1:n
+        for j in nzrange(S, i)
+            row = S.rowval[j]
+            ret.nzval[j] *= v[row]
+        end
+    end
+    ret
+end
+scale_rows(S, v) = scale_rows!(deepcopy(S), S,  v)

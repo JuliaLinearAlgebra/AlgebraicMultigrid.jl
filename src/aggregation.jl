@@ -2,7 +2,7 @@ function smoothed_aggregation(A,
                         symmetry = Hermitian(),
                         strength = Symmetric(),
                         aggregate = Standard(),
-                        smooth = Jacobi(4.0/3.0),
+                        smooth = JacobiProlongation(4.0/3.0),
                         presmoother = GaussSeidel(),
                         postsmoother = GaussSeidel(),
                         improve_candidates = GaussSeidel(4),
@@ -53,6 +53,8 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
 
     T, B = fit_candidates(AggOp, B)
 
+    P = smooth_prolongator(smooth, A, T, S, B)
+
 end
 
 function fit_candidates(AggOp, B, tol = 1e-10)
@@ -63,6 +65,10 @@ function fit_candidates(AggOp, B, tol = 1e-10)
     K2 = size(B, 2)
 
     A = AggOp.'
+    @show size(A)
+
+    n_coarse = size(A, 1)
+    n_fine = size(A, 2)
 
     # R = zeros(eltype(B), N_coarse, K2, K2)
     R = zeros(eltype(B), N_coarse)
@@ -73,10 +79,10 @@ function fit_candidates(AggOp, B, tol = 1e-10)
     R = vec(R)
     Qx = vec(Qx)
 
-    n_row = N_fine
-    n_col = N_coarse
+    # n_row = N_fine
+    # n_col = N_coarse
 
-    BS = K1 * K2
+    # BS = K1 * K2
 
     #=for i = 1:n_col
         Ax_start = 1 + BS * A.colptr[i]
@@ -92,10 +98,10 @@ function fit_candidates(AggOp, B, tol = 1e-10)
             Ax_start += BS
         end
     end=#
-    A.nzval .= B
+    # A.nzval .= B
 
-    for i = 1:n_col
-        norm_i = norm(A[:,i])
+    for i = 1:n_fine
+        norm_i = norm(A[:,i]) # Replace by more efficient norm
         threshold_i = tol * norm_i
         if norm_i > threshold_i
             scale = 1 / norm_i
