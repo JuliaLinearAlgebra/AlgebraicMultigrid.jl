@@ -3,6 +3,9 @@ module AMG
 import IterativeSolvers: gauss_seidel!
 using Base.Threads
 
+include("utils.jl")
+export approximate_spectral_radius
+
 include("strength.jl")
 export strength_of_connection, Classical, SymmetricStrength
 

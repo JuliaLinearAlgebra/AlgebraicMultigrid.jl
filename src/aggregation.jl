@@ -50,18 +50,17 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
                             symmetry)
 
     # Calculate strength of connection matrix
-    S = strength_of_connection(strength, A)
+    @time S = strength_of_connection(strength, A)
 
     # Aggregation operator
-    AggOp = aggregation(aggregate, S)
-    AggOp = float.(AggOp)
+    @time AggOp = aggregation(aggregate, S)
 
     b = zeros(eltype(A), size(A, 1))
 
     # Improve candidates
-    relax!(improve_candidates, A, B, b)
+    @time relax!(improve_candidates, A, B, b)
 
-    T, B = fit_candidates(AggOp, B)
+    @time T, B = fit_candidates(AggOp, B)
 
     P = smooth_prolongator(smooth, A, T, S, B)
     R = construct_R(symmetry, P)
@@ -116,7 +115,8 @@ function fit_candidates(AggOp, B, tol = 1e-10)
     # A.nzval .= B
 
     for i = 1:n_fine
-        norm_i = norm(A[:,i]) # Replace by more efficient norm
+        norm_i = norm_col(A, i)
+        # norm_i = norm(A[:,i])
         threshold_i = tol * norm_i
         if norm_i > threshold_i
             scale = 1 / norm_i
@@ -194,4 +194,12 @@ function fit_candidates(AggOp, B, tol = 1e-10)
 
     #R = reshape(R, N_coarse, K2)
     A, R
+end
+function norm_col(A, i)
+    s = zero(eltype(A))
+    for j in nzrange(A, i)
+        val = A.nzval[j]
+        s += val*val
+    end
+    sqrt(s)
 end

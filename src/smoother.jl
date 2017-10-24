@@ -108,11 +108,14 @@ end
 function weight(::DiagonalWeighting, S, ω)
     D_inv = 1 ./ diag(S)
     D_inv_S = scale_rows(S, D_inv)
-    (ω / approximate_spectral_radius(D_inv_S)) * D_inv_S
+    # @show approximate_spectral_radius(D_inv_S)
+    t = @elapsed x = (ω / approximate_spectral_radius(D_inv_S)) * D_inv_S
+    info("Time to compute spectal radius = $t sec")
+    x
 end
 
-approximate_spectral_radius(A) =
-    eigs(A, maxiter = 15, tol = 0.01, ritzvec = false)[1][1] |> real
+#approximate_spectral_radius(A) =
+#    eigs(A, maxiter = 15, tol = 0.01, ritzvec = false)[1][1] |> real
 
 function scale_rows!(ret, S, v)
     n = size(S, 1)
