@@ -50,17 +50,17 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
                             symmetry)
 
     # Calculate strength of connection matrix
-    @time S = strength_of_connection(strength, A)
+    S = strength_of_connection(strength, A)
 
     # Aggregation operator
-    @time AggOp = aggregation(aggregate, S)
+    AggOp = aggregation(aggregate, S)
 
     b = zeros(eltype(A), size(A, 1))
 
     # Improve candidates
-    @time relax!(improve_candidates, A, B, b)
+    relax!(improve_candidates, A, B, b)
 
-    @time T, B = fit_candidates(AggOp, B)
+    T, B = fit_candidates(AggOp, B)
 
     P = smooth_prolongator(smooth, A, T, S, B)
     R = construct_R(symmetry, P)

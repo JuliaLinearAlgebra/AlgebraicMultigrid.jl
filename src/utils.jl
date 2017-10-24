@@ -8,21 +8,22 @@ function approximate_spectral_radius(A, tol = 0.01,
     v0 = rand(size(A,1))
     ev = zeros(Complex{eltype(A)}, maxiter)
     max_index = 0
+    X = zeros(size(A,1), maxiter)
 
     for i in 1:restart+1
         evect, ev, H, V, flag =
                     approximate_eigenvalues(A, tol, maxiter,
                                             symmetric, v0)
         nvecs = size(ev, 1)
+        # X = hcat(V[1:end-1]...)
+        copy_V!(X, V)
         m, max_index = findmax(abs.(ev))
         error = H[nvecs, nvecs-1] * evect[end, max_index]
         if abs(error) / abs(ev[max_index]) < tol || flag
-            @show size(hcat(V[1:end-1]...))
-            @show size(evect[:, max_index])
-            v0 = hcat(V[1:end-1]...) * evect[:, max_index]
+            v0 = X * view(evect, :, max_index)
             break
         else
-            v0 = hcat(V[1:end-1]...) * evect[:, max_index]
+            v0 = X * view(evect, :, max_index)
         end
     end
 
@@ -30,19 +31,33 @@ function approximate_spectral_radius(A, tol = 0.01,
 
 end
 
+function copy_V!(X, V)
+    n = size(V,1)
+    for i = 1:n-1
+        X[:,i] = V[i]
+    end
+end
+
 function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
 
     maxiter = min(size(A, 1), maxiter)
-    v0 /= norm(v0)
+    v0 ./= norm(v0)
     H = zeros(eltype(A), maxiter + 1, maxiter)
     V = [v0]
+    # V = Vector{Vector{eltype(A)}}(maxiter + 1)
+    # V[1] = v0
     flag = false
 
     for j = 1:maxiter
         w = A * V[end]
+        # V[j+1] = A * V[j]
+        # w = V[j+1]
+        # A_mul_B!(w, A, V[j])
         for (i,v) in enumerate(V)
+        #for i = 1:j
+            # v = V[i]
             H[i,j] = dot(v, w)
-            Base.BLAS.axpy!(-H[i,j], v, w)
+            BLAS.axpy!(-H[i,j], v, w)
         end
         H[j+1,j] = norm(w)
         if H[j+1, j] < eps()
@@ -54,7 +69,8 @@ function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
             end
         end
 
-        w = w / H[j+1, j]
+        #w = w / H[j+1, j]
+        scale!(w, 1/H[j+1,j])
         push!(V, w)
     end
 
