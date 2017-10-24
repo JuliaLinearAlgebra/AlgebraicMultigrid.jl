@@ -1,4 +1,7 @@
-function standard_aggregation(S)
+struct StandardAggregation
+end
+
+function aggregation(::StandardAggregation, S)
 
     n = size(S, 1)
     x = zeros(Int, n)

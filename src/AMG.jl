@@ -23,10 +23,10 @@ include("classical.jl")
 export ruge_stuben
 
 include("aggregate.jl")
-export standard_aggregation
+export aggregation, StandardAggregation
 
 include("aggregation.jl")
-export fit_candidates
+export fit_candidates, smoothed_aggregation
 
 include("preconditioner.jl")
 export aspreconditioner

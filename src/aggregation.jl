@@ -1,7 +1,7 @@
 function smoothed_aggregation(A,
-                        symmetry = Hermitian(),
-                        strength = Symmetric(),
-                        aggregate = Standard(),
+                        symmetry = HermitianSymmetry(),
+                        strength = SymmetricStrength(),
+                        aggregate = StandardAggregation(),
                         smooth = JacobiProlongation(4.0/3.0),
                         presmoother = GaussSeidel(),
                         postsmoother = GaussSeidel(),
@@ -9,7 +9,8 @@ function smoothed_aggregation(A,
                         max_levels = 10,
                         max_coarse = 10,
                         diagonal_dominance = false,
-                        keep = false)
+                        keep = false,
+                        coarse_solver = Pinv())
 
 
     n = size(A, 1)
@@ -23,39 +24,54 @@ function smoothed_aggregation(A,
 
     improve_candidates =
         levelize_smooth_or_improve_candidates(improve_candidates, max_levels)=#
-    str = [stength for _ in 1:max_levels - 1]
-    agg = [aggregate for _ in 1:max_levels - 1]
-    sm = [smooth for _ in 1:max_levels]
+    # str = [stength for _ in 1:max_levels - 1]
+    # agg = [aggregate for _ in 1:max_levels - 1]
+    # sm = [smooth for _ in 1:max_levels]
 
-    levels = Vector{SLevels}()
+    levels = Vector{Level{eltype(A), Int64}}()
 
-    while length(levels) < max_levels && size(A, 1) < max_coarse
-        A, B = extend_heirarchy!(levels, strength, aggregate, smooth,
+    while length(levels) < max_levels && size(A, 1) > max_coarse
+        A, B = extend_hierarchy!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
-                                keep, A, B)
+                                keep, A, B, symmetry)
     end
+    #=A, B = extend_hierarchy!(levels, strength, aggregate, smooth,
+                            improve_candidates, diagonal_dominance,
+                            keep, A, B, symmetry)=#
+    MultiLevel(levels, A, presmoother, postsmoother)
+end
 
+struct HermitianSymmetry
 end
 
 function extend_hierarchy!(levels, strength, aggregate, smooth,
-                            improve_candidates, diagonal_dominance, keep, A, B)
+                            improve_candidates, diagonal_dominance, keep,
+                            A, B,
+                            symmetry)
 
     # Calculate strength of connection matrix
     S = strength_of_connection(strength, A)
 
     # Aggregation operator
     AggOp = aggregation(aggregate, S)
+    AggOp = float.(AggOp)
 
     b = zeros(eltype(A), size(A, 1))
 
     # Improve candidates
-    relax!(A, B, b)
+    relax!(improve_candidates, A, B, b)
 
     T, B = fit_candidates(AggOp, B)
 
     P = smooth_prolongator(smooth, A, T, S, B)
+    R = construct_R(symmetry, P)
+    push!(levels, Level(A, P, R))
 
+    A = R * A * P
+
+    A, B
 end
+construct_R(::HermitianSymmetry, P) = P'
 
 function fit_candidates(AggOp, B, tol = 1e-10)
 
@@ -65,7 +81,6 @@ function fit_candidates(AggOp, B, tol = 1e-10)
     K2 = size(B, 2)
 
     A = AggOp.'
-    @show size(A)
 
     n_coarse = size(A, 1)
     n_fine = size(A, 2)

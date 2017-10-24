@@ -73,6 +73,7 @@ end
 struct SymmetricStrength{T} <: Strength
     θ::T
 end
+SymmetricStrength() = SymmetricStrength(0.)
 
 function strength_of_connection{T}(s::SymmetricStrength{T}, A)
 
