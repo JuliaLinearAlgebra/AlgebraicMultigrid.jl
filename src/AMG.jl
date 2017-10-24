@@ -24,6 +24,9 @@ export ruge_stuben
 include("aggregate.jl")
 export standard_aggregation
 
+include("aggregation.jl")
+export fit_candidates
+
 # include("aggregation.jl")
 
 include("preconditioner.jl")

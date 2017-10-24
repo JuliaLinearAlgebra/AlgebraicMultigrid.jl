@@ -86,9 +86,6 @@ function standard_aggregation(S)
         next_aggregate += 1
     end
 
-    @show next_aggregate
-    @show x
-
     y = y[1:next_aggregate]
     M,N = (n, next_aggregate)
 
