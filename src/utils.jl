@@ -6,6 +6,7 @@ function approximate_spectral_radius(A, tol = 0.01,
 
     # Initial guess
     v0 = rand(size(A,1))
+    maxiter = min(size(A, 1), maxiter)
     ev = zeros(Complex{eltype(A)}, maxiter)
     max_index = 0
     X = zeros(size(A,1), maxiter)
@@ -40,7 +41,7 @@ end
 
 function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
 
-    maxiter = min(size(A, 1), maxiter)
+    # maxiter = min(size(A, 1), maxiter)
     v0 ./= norm(v0)
     H = zeros(eltype(A), maxiter + 1, maxiter)
     V = [v0]
