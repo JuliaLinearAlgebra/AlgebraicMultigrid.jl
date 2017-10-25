@@ -24,7 +24,9 @@ function Base.show(io::IO, ml::MultiLevel)
     op = operator_complexity(ml)
     g = grid_complexity(ml)
     c = ml.coarse_solver
-    total_nnz = sum(nnz(level.A) for level in ml.levels) + nnz(ml.final_A)
+    total_nnz = isempty(ml.levels) ? nnz(ml.final_A) :
+                    sum(nnz(level.A) for level in ml.levels) + nnz(ml.final_A)
+
     lstr = ""
     for (i, level) in enumerate(ml.levels)
         lstr = lstr *
@@ -47,11 +49,15 @@ function Base.show(io::IO, ml::MultiLevel)
 end
 
 function operator_complexity(ml::MultiLevel)
-    (sum(nnz(level.A) for level in ml.levels) + nnz(ml.final_A)) / nnz(ml.levels[1].A)
+    isempty(ml.levels) ? 1. :
+        (sum(nnz(level.A) for level in ml.levels) +
+            nnz(ml.final_A)) / nnz(ml.levels[1].A)
 end
 
 function grid_complexity(ml::MultiLevel)
-    (sum(size(level.A, 1) for level in ml.levels) + size(ml.final_A, 1)) / size(ml.levels[1].A, 1)
+    isempty(ml.levels) ? 1. :
+        (sum(size(level.A, 1) for level in ml.levels) +
+            size(ml.final_A, 1)) / size(ml.levels[1].A, 1)
 end
 
 abstract type Cycle end
