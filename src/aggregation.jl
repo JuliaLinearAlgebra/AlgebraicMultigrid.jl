@@ -1,4 +1,4 @@
-function smoothed_aggregation(A,
+function smoothed_aggregation{Tv,Ti}(A::SparseMatrixCSC{Tv,Ti},
                         symmetry = HermitianSymmetry(),
                         strength = SymmetricStrength(),
                         aggregate = StandardAggregation(),
@@ -28,12 +28,15 @@ function smoothed_aggregation(A,
     # agg = [aggregate for _ in 1:max_levels - 1]
     # sm = [smooth for _ in 1:max_levels]
 
-    levels = Vector{Level{eltype(A), Int64}}()
+    levels = Vector{Level{Tv,Ti}}()
 
-    while length(levels) < max_levels && size(A, 1) > max_coarse
+    while length(levels) < max_levels # && size(A, 1) > max_coarse
         A, B = extend_hierarchy!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
                                 keep, A, B, symmetry)
+        if size(A, 1) <= max_coarse
+            break
+        end
     end
     #=A, B = extend_hierarchy!(levels, strength, aggregate, smooth,
                             improve_candidates, diagonal_dominance,
@@ -55,13 +58,13 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
     # Aggregation operator
     AggOp = aggregation(aggregate, S)
 
-    b = zeros(eltype(A), size(A, 1))
+    # b = zeros(eltype(A), size(A, 1))
 
     # Improve candidates
-    relax!(improve_candidates, A, B, b)
+    # relax!(improve_candidates, A, B, b)
 
     T, B = fit_candidates(AggOp, B)
-
+    
     P = smooth_prolongator(smooth, A, T, S, B)
     R = construct_R(symmetry, P)
     push!(levels, Level(A, P, R))
@@ -112,7 +115,9 @@ function fit_candidates(AggOp, B, tol = 1e-10)
             Ax_start += BS
         end
     end=#
-    # A.nzval .= B
+    copy!(A.nzval, B)
+    # @show size(A.nzval)
+    # @show size(B)
 
     for i = 1:n_fine
         norm_i = norm_col(A, i)
@@ -121,6 +126,9 @@ function fit_candidates(AggOp, B, tol = 1e-10)
         if norm_i > threshold_i
             scale = 1 / norm_i
             R[i] = norm_i
+        else
+            scale = 0
+            R[i] = 0
         end
         for j in nzrange(A, i)
             A.nzval[j] *= scale

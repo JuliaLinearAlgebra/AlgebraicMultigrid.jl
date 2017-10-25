@@ -43,6 +43,8 @@ function aggregation(::StandardAggregation, S)
         end
     end
 
+    @show "after pass1", next_aggregate
+
     # Pass 2
     for i = 1:n
         if x[i] != 0
@@ -60,6 +62,7 @@ function aggregation(::StandardAggregation, S)
     end
 
     next_aggregate -= 1
+    @show "after pass 2", next_aggregate
 
     # Pass 3
     for i = 1:n
@@ -88,6 +91,7 @@ function aggregation(::StandardAggregation, S)
 
         next_aggregate += 1
     end
+    @show "final", next_aggregate
 
     y = y[1:next_aggregate]
     M,N = (n, next_aggregate)

@@ -99,7 +99,7 @@ function strength_of_connection{T}(s::SymmetricStrength{T}, A)
         for j in nzrange(A, i)
             row = A.rowval[j]
             val = A.nzval[j]
-            if norm(val) < eps_Aii * diags[row]
+            if val*val < eps_Aii * diags[row]
                 S.nzval[j] = 0
             end
         end
