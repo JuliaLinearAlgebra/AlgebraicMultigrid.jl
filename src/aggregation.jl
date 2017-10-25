@@ -62,9 +62,8 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
 
     # Improve candidates
     # relax!(improve_candidates, A, B, b)
-
     T, B = fit_candidates(AggOp, B)
-    
+
     P = smooth_prolongator(smooth, A, T, S, B)
     R = construct_R(symmetry, P)
     push!(levels, Level(A, P, R))

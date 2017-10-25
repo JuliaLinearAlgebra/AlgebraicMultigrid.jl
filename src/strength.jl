@@ -107,9 +107,9 @@ function strength_of_connection{T}(s::SymmetricStrength{T}, A)
 
     dropzeros!(S)
 
-    scale_cols_by_largest_entry!(S)
-
     S.nzval .= abs.(S.nzval)
+
+    scale_cols_by_largest_entry!(S)
 
     S
 end
