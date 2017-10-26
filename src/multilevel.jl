@@ -87,8 +87,10 @@ function solve{T}(ml::MultiLevel, b::Vector{T},
 end
 function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl)
 
+    @show lvl
     A = ml.levels[lvl].A
     presmoother!(ml.presmoother, A, x, b)
+    @show norm(x)
 
     res = b - A * x
     coarse_b = ml.levels[lvl].R * res
@@ -103,6 +105,7 @@ function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl)
     x .+= ml.levels[lvl].P * coarse_x
 
     postsmoother!(ml.postsmoother, A, x, b)
+    @show norm(x)
 
     x
 end

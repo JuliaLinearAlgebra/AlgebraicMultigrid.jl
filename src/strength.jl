@@ -75,10 +75,19 @@ struct SymmetricStrength{T} <: Strength
 end
 SymmetricStrength() = SymmetricStrength(0.)
 
-function strength_of_connection{T}(s::SymmetricStrength{T}, A)
+function strength_of_connection{T}(s::SymmetricStrength{T}, A, bsr_flag = false)
+
+
 
     θ = s.θ
-    S = deepcopy(A)
+
+    if bsr_flag && θ == 0
+        S = SparseMatrixCSC(size(A)...,
+                    A.colptr, A.rowval, ones(size(A.rowval)))
+        return S
+    else
+        S = deepcopy(A)
+    end
     n = size(A, 1)
     diags = Vector{eltype(A)}(n)
 
@@ -108,6 +117,9 @@ function strength_of_connection{T}(s::SymmetricStrength{T}, A)
     dropzeros!(S)
 
     S.nzval .= abs.(S.nzval)
+    # for i = 1:size(S.nzval, 1)
+    #     S.nzval[i] = abs(S.nzval[i])
+    # end
 
     scale_cols_by_largest_entry!(S)
 

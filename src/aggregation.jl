@@ -29,11 +29,12 @@ function smoothed_aggregation{Tv,Ti}(A::SparseMatrixCSC{Tv,Ti},
     # sm = [smooth for _ in 1:max_levels]
 
     levels = Vector{Level{Tv,Ti}}()
+    bsr_flag = false
 
     while length(levels) < max_levels # && size(A, 1) > max_coarse
-        A, B = extend_hierarchy!(levels, strength, aggregate, smooth,
+        A, B, bsr_flag = extend_hierarchy!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
-                                keep, A, B, symmetry)
+                                keep, A, B, symmetry, bsr_flag)
         if size(A, 1) <= max_coarse
             break
         end
@@ -50,19 +51,23 @@ end
 function extend_hierarchy!(levels, strength, aggregate, smooth,
                             improve_candidates, diagonal_dominance, keep,
                             A, B,
-                            symmetry)
+                            symmetry, bsr_flag)
 
     # Calculate strength of connection matrix
-    S = strength_of_connection(strength, A)
+    S = strength_of_connection(strength, A, bsr_flag)
+    @show sum(S)
 
     # Aggregation operator
-    AggOp = aggregation(aggregate, S)
+    AggOp = aggregation(aggregate, S')
+    @show sum(AggOp)
 
     # b = zeros(eltype(A), size(A, 1))
 
     # Improve candidates
     # relax!(improve_candidates, A, B, b)
     T, B = fit_candidates(AggOp, B)
+    @show sum(B)
+    @show sum(T)
 
     P = smooth_prolongator(smooth, A, T, S, B)
     R = construct_R(symmetry, P)
@@ -70,30 +75,33 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
 
     A = R * A * P
 
-    A, B
+    dropzeros!(A)
+
+    bsr_flag = true
+
+    A, B, bsr_flag
 end
 construct_R(::HermitianSymmetry, P) = P'
 
 function fit_candidates(AggOp, B, tol = 1e-10)
 
-    N_coarse, N_fine = size(AggOp)
-
-    K1 = Int(size(B, 1) / N_fine)
-    K2 = size(B, 2)
+    # K1 = Int(size(B, 1) / N_fine)
+    # K2 = size(B, 2)
 
     A = AggOp.'
 
-    n_coarse = size(A, 1)
-    n_fine = size(A, 2)
+    n_coarse = size(A, 2)
+    n_fine = size(A, 1)
+    n_col = n_coarse
 
     # R = zeros(eltype(B), N_coarse, K2, K2)
-    R = zeros(eltype(B), N_coarse)
+    R = zeros(eltype(B), n_coarse)
     # Qx = zeros(eltype(B), nnz(AggOp), K1, K2)
-    Qx = zeros(eltype(B), nnz(A), K1)
+    Qx = zeros(eltype(B), nnz(A))
 
 
-    R = vec(R)
-    Qx = vec(Qx)
+    # R = vec(R)
+    # Qx = vec(Qx)
 
     # n_row = N_fine
     # n_col = N_coarse
@@ -114,12 +122,13 @@ function fit_candidates(AggOp, B, tol = 1e-10)
             Ax_start += BS
         end
     end=#
-    copy!(A.nzval, B)
+    # copy!(A.nzval, B)
+    copy!(Qx, B)
     # @show size(A.nzval)
     # @show size(B)
 
-    for i = 1:n_fine
-        norm_i = norm_col(A, i)
+    for i = 1:n_col
+        norm_i = norm_col(A, Qx, i)
         # norm_i = norm(A[:,i])
         threshold_i = tol * norm_i
         if norm_i > threshold_i
@@ -130,7 +139,8 @@ function fit_candidates(AggOp, B, tol = 1e-10)
             R[i] = 0
         end
         for j in nzrange(A, i)
-            A.nzval[j] *= scale
+            row = A.rowval[j]
+            Qx[row] *= scale
         end
         #=col_start = A.colptr[i]
         col_end = A.colptr[i+1]
@@ -200,12 +210,12 @@ function fit_candidates(AggOp, B, tol = 1e-10)
                         #.colptr, A.rowval, Qx)
 
     #R = reshape(R, N_coarse, K2)
-    A, R
+    SparseMatrixCSC(size(A)..., A.colptr, A.rowval, Qx), R
 end
-function norm_col(A, i)
+function norm_col(A, Qx, i)
     s = zero(eltype(A))
     for j in nzrange(A, i)
-        val = A.nzval[j]
+        val = Qx[A.rowval[j]]
         s += val*val
     end
     sqrt(s)
