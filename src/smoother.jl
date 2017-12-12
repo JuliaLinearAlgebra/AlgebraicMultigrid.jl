@@ -16,7 +16,7 @@ postsmoother!(s, A, x, b) = smoother!(s, s.sweep, A, x, b)
 
 smoother!(s::GaussSeidel, ::ForwardSweep, A, x, b) =
                     gs!(A, b, x, 1, 1, size(A, 1))
-                    # gauss_seidel!(x, A, b, maxiter = 1)
+
 function smoother!(s::GaussSeidel, ::SymmetricSweep, A, x, b)
     smoother!(s, ForwardSweep(), A, x, b)
     smoother!(s, BackwardSweep(), A, x, b)
@@ -26,9 +26,9 @@ smoother!(s::GaussSeidel, ::BackwardSweep, A, x, b) =
     gs!(A, b, x, size(A,1), -1, 1)
 
 
-function gs!{T,Ti}(A::SparseMatrixCSC{T,Ti}, b::Vector{T}, x::Vector{T}, start, step, stop)
+function gs!{T,V}(A::SparseMatrixCSC{T,V}, b::Vector{T}, x::Vector{T}, start, step, stop)
     n = size(A, 1)
-    z = zero(eltype(A))
+    z = zero(T)
     for i = start:step:stop
         rsum = z
         d = z

@@ -15,9 +15,11 @@ end
 abstract type CoarseSolver end
 struct Pinv <: CoarseSolver
 end
+struct BackSlash <: CoarseSolver
+end
 
 MultiLevel{Ti,Tv}(l::Vector{Level{Ti,Tv}}, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother) =
-    MultiLevel(l, A, Pinv(), presmoother, postsmoother)
+    MultiLevel(l, A, BackSlash(), presmoother, postsmoother)
 Base.length(ml) = length(ml.levels) + 1
 
 function Base.show(io::IO, ml::MultiLevel)
@@ -58,52 +60,58 @@ abstract type Cycle end
 struct V <: Cycle
 end
 
-function solve{T}(ml::MultiLevel, b::Vector{T},
-                                    maxiter = 100,
-                                    cycle = V(),
-                                    tol = 1e-5;
-                                    verbose = false)
-    x = zeros(T, size(b))
-    residuals = Vector{T}()
+function solve(ml::MultiLevel{T,R,S,U,W}, b::Vector{U}, maxiter = 100, cycle = V(),
+               tol = 1e-5; verbose = false) where {T,R,S,U,W}
+
+    x = zeros(U, size(b))
+    residuals = Vector{U}()
     A = ml.levels[1].A
     normb = norm(b)
     if normb != 0
         tol *= normb
     end
     push!(residuals, normb)
+    t = 0.0
+    t2 = 0.0
 
     lvl = 1
     while length(residuals) <= maxiter && residuals[end] > tol
         if length(ml) == 1
             x = coarse_solver(ml.coarse_solver, A, b)
         else
-            x = __solve(cycle, ml, x, b, lvl)
+            x,t,t2 = __solve(cycle, ml, x, b, lvl, t, t2)
         end
-        push!(residuals, T(norm(b - A * x)))
+        push!(residuals, U(norm(b - A * x)))
     end
+    
+    #println("t = $t")
+    #println("t2 = $t2")
+
     x
 end
-function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl)
+
+function __solve(v::V, ml::MultiLevel{X,Y,Z,T,U}, x::Vector{T}, b::Vector{T}, lvl, t,t2) where {X,Y,Z,T,U}
 
     A = ml.levels[lvl].A
-    presmoother!(ml.presmoother, A, x, b)
+    t += @elapsed presmoother!(ml.presmoother, A, x, b)
 
-    res = b - A * x
-    coarse_b = ml.levels[lvl].R * res
-    coarse_x = zeros(T, size(coarse_b))
+    t2 += @elapsed res = b - A * x
+    t2 += @elapsed coarse_b = ml.levels[lvl].R * res
+    t2 += @elapsed coarse_x = zeros(T, size(coarse_b))
 
     if lvl == length(ml.levels)
-        coarse_x = coarse_solver(ml.coarse_solver, ml.final_A, coarse_b)
+        t2 += @elapsed coarse_x = coarse_solver(ml.coarse_solver, ml.final_A, coarse_b)
     else
-        coarse_x = __solve(v, ml, coarse_x, coarse_b, lvl + 1)
+        coarse_x, t, t2 = __solve(v, ml, coarse_x, coarse_b, lvl + 1, t, t2)
     end
 
-    x .+= ml.levels[lvl].P * coarse_x
+    t2 += @elapsed x .+= ml.levels[lvl].P * coarse_x
 
-    postsmoother!(ml.postsmoother, A, x, b)
+    t += @elapsed postsmoother!(ml.postsmoother, A, x, b)
 
-    x
+    x, t, t2
 end
 
 coarse_solver{Tv,Ti}(::Pinv, A::SparseMatrixCSC{Tv,Ti}, b::Vector{Tv}) =
                                                         pinv(full(A)) * b
+coarse_solver{Tv,Ti}(::BackSlash, A::SparseMatrixCSC{Tv,Ti}, b::Vector{Tv}) = A \ b
