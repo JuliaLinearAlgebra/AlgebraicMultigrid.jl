@@ -64,7 +64,8 @@ function solve{T}(ml::MultiLevel, b::Vector{T},
                                     maxiter = 100,
                                     cycle = V(),
                                     tol = 1e-5;
-                                    verbose = false)
+                                    verbose = false,
+                                    log = false)
     x = zeros(T, size(b))
     residuals = Vector{T}()
     A = ml.levels[1].A
@@ -83,14 +84,17 @@ function solve{T}(ml::MultiLevel, b::Vector{T},
         end
         push!(residuals, T(norm(b - A * x)))
     end
-    x
+
+    if log
+        return x, residuals
+    else
+        return x
+    end
 end
 function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl)
 
-    @show lvl
     A = ml.levels[lvl].A
     presmoother!(ml.presmoother, A, x, b)
-    @show norm(x)
 
     res = b - A * x
     coarse_b = ml.levels[lvl].R * res
@@ -105,10 +109,10 @@ function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl)
     x .+= ml.levels[lvl].P * coarse_x
 
     postsmoother!(ml.postsmoother, A, x, b)
-    @show norm(x)
 
     x
 end
 
 coarse_solver{Tv,Ti}(::Pinv, A::SparseMatrixCSC{Tv,Ti}, b::Vector{Tv}) =
-                                                        pinv(full(A)) * b
+                                                        A \ b
+                                                        #pinv(full(A)) * b
