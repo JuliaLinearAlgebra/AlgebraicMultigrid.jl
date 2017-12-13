@@ -114,5 +114,4 @@ function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl)
 end
 
 coarse_solver{Tv,Ti}(::Pinv, A::SparseMatrixCSC{Tv,Ti}, b::Vector{Tv}) =
-                                                        A \ b
-                                                        #pinv(full(A)) * b
+                                                        pinv(full(A)) * b

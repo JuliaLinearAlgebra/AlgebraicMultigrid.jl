@@ -11,6 +11,8 @@ struct GaussSeidel{S} <: Smoother
     iter::Int
 end
 GaussSeidel(iter = 1) = GaussSeidel(SymmetricSweep(), iter)
+GaussSeidel(f::ForwardSweep) = GaussSeidel(f, 1)
+GaussSeidel(b::BackwardSweep) = GaussSeidel(b, 1)
 
 presmoother!(s, A, x, b) = smoother!(s, s.sweep, A, x, b)
 postsmoother!(s, A, x, b) = smoother!(s, s.sweep, A, x, b)
@@ -18,7 +20,7 @@ relax!(s, A, x, b) = smoother!(s, s.sweep, A, x, b)
 
 smoother!(s::GaussSeidel, ::ForwardSweep, A, x, b) =
                     gs!(A, b, x, 1, 1, size(A, 1))
-                    # gauss_seidel!(x, A, b, maxiter = 1)
+
 function smoother!(s::GaussSeidel, ::SymmetricSweep, A, x, b)
     for i in 1:s.iter
         smoother!(s, ForwardSweep(), A, x, b)
