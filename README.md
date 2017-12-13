@@ -34,7 +34,15 @@ ml = ruge_stuben(A) # Construct a Ruge-Stuben solver
 solve(ml, A * ones(1000)) # should return ones(1000)
 ```
 
-## Roadmap
+### As a Preconditioner
+You can use AMG as a preconditioner for Krylov methods such as Conjugate Gradients.
+```julia
+import IterativeSolvers: cg
+p = aspreconditioner(ml)
+c = cg(A, A*ones(1000), Pl = p) 
+```
+
+## Features and Roadmap
 
 This package currently supports: 
 1. Ruge-Stuben Solver
@@ -43,9 +51,14 @@ This package currently supports:
 4. Gauss-Siedel smoothers
 5. V cycle multigrid
 
-In the future, this package will support
+The following have experimental support:
 1. SmoothedAggregation Solver
 2. Standard Strength of Conneciton
-3. Other splitting methods (like CLJP)
-4. SOR, Jacobi smoothers
-5. W, F, AMLI cycles
+
+In the future, this package will support:
+1. Other splitting methods (like CLJP)
+2. SOR, Jacobi smoothers
+3. W, F, AMLI cycles
+
+#### Acknowledgements
+This package has been heavily inspired by the [`PyAMG`](http://github.com/pyamg/pyamg) project. 

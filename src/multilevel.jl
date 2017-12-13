@@ -47,11 +47,13 @@ function Base.show(io::IO, ml::MultiLevel)
 end
 
 function operator_complexity(ml::MultiLevel)
-    (sum(nnz(level.A) for level in ml.levels) + nnz(ml.final_A)) / nnz(ml.levels[1].A)
+    (sum(nnz(level.A) for level in ml.levels) +
+            nnz(ml.final_A)) / nnz(ml.levels[1].A)
 end
 
 function grid_complexity(ml::MultiLevel)
-    (sum(size(level.A, 1) for level in ml.levels) + size(ml.final_A, 1)) / size(ml.levels[1].A, 1)
+    (sum(size(level.A, 1) for level in ml.levels) +
+            size(ml.final_A, 1)) / size(ml.levels[1].A, 1)
 end
 
 abstract type Cycle end
@@ -62,7 +64,8 @@ function solve{T}(ml::MultiLevel, b::Vector{T},
                                     maxiter = 100,
                                     cycle = V(),
                                     tol = 1e-5;
-                                    verbose = false)
+                                    verbose = false,
+                                    log = false)
     x = zeros(T, size(b))
     residuals = Vector{T}()
     A = ml.levels[1].A
@@ -81,7 +84,12 @@ function solve{T}(ml::MultiLevel, b::Vector{T},
         end
         push!(residuals, T(norm(b - A * x)))
     end
-    x
+
+    if log
+        return x, residuals
+    else
+        return x
+    end
 end
 function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl)
 
