@@ -68,7 +68,7 @@ function solve{T}(ml::MultiLevel, b::Vector{T},
                                     log = false)
     x = zeros(T, size(b))
     residuals = Vector{T}()
-    A = ml.levels[1].A
+    A = length(ml) == 1 ? ml.final_A : ml.levels[1].A
     normb = norm(b)
     if normb != 0
         tol *= normb

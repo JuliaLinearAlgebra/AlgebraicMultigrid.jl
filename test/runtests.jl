@@ -97,6 +97,11 @@ end
 @test round(AMG.operator_complexity(ml), 3) ≈ 1.142
 @test round(AMG.grid_complexity(ml), 3) ≈ 1.190
 
+include("gmg.jl")
+
+A = float.(poisson(10^6))
+ml = multigrid(A)
+@test length(ml) == 10
 
 end
 
@@ -210,4 +215,5 @@ diff = x - [0.775725, -0.571202, -0.290989, -0.157001, -0.106981, 0.622652,
 
 
 end
+
 end

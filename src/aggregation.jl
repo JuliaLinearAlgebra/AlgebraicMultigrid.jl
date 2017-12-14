@@ -31,13 +31,13 @@ function smoothed_aggregation{Tv,Ti}(A::SparseMatrixCSC{Tv,Ti},
     levels = Vector{Level{Tv,Ti}}()
     bsr_flag = false
 
-    while length(levels) < max_levels # && size(A, 1) > max_coarse
+    while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
         A, B, bsr_flag = extend_hierarchy!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
                                 keep, A, B, symmetry, bsr_flag)
-        if size(A, 1) <= max_coarse
+        #=if size(A, 1) <= max_coarse
             break
-        end
+        end=#
     end
     #=A, B = extend_hierarchy!(levels, strength, aggregate, smooth,
                             improve_candidates, diagonal_dominance,
