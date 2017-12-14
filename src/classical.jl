@@ -20,11 +20,11 @@ function ruge_stuben{Ti,Tv}(A::SparseMatrixCSC{Ti,Tv};
 
     levels = Vector{Level{Ti,Tv}}()
 
-    while length(levels) < max_levels #&& size(A, 1) < max_coarse
+    while length(levels) + 1 < max_levels && size(A, 1) < max_coarse
         A = extend_heirarchy!(levels, strength, CF, A)
-        if size(A, 1) <= max_coarse
-            break
-        end
+        #if size(A, 1) <= max_coarse
+        #    break
+        #end
     end
     MultiLevel(levels, A, presmoother, postsmoother)
 end
