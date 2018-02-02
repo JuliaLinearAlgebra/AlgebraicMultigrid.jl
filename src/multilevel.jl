@@ -1,7 +1,7 @@
-struct Level{Ti,Tv}
-    A::SparseMatrixCSC{Ti,Tv}
-    P::SparseMatrixCSC{Ti,Tv}
-    R::SparseMatrixCSC{Ti,Tv}
+struct Level{T,V}
+    A::SparseMatrixCSC{T,V}
+    P::SparseMatrixCSC{T,V}
+    R::SparseMatrixCSC{T,V}
 end
 
 struct MultiLevel{S, Pre, Post, Ti, Tv}

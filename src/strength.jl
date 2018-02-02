@@ -77,13 +77,11 @@ SymmetricStrength() = SymmetricStrength(0.)
 
 function strength_of_connection{T}(s::SymmetricStrength{T}, A, bsr_flag = false)
 
-
-
     θ = s.θ
 
     if bsr_flag && θ == 0
         S = SparseMatrixCSC(size(A)...,
-                    A.colptr, A.rowval, ones(size(A.rowval)))
+                    A.colptr, A.rowval, ones(eltype(A), size(A.rowval)))
         return S
     else
         S = deepcopy(A)

@@ -110,7 +110,7 @@ end
 function weight(::DiagonalWeighting, S, ω)
     D_inv = 1 ./ diag(S)
     D_inv_S = scale_rows(S, D_inv)
-    (ω / approximate_spectral_radius(D_inv_S)) * D_inv_S
+    (eltype(S)(ω) / approximate_spectral_radius(D_inv_S)) * D_inv_S
     #(ω) * D_inv_S
 end
 

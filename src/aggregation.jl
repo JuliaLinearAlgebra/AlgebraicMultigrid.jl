@@ -1,4 +1,4 @@
-function smoothed_aggregation{Tv,Ti}(A::SparseMatrixCSC{Tv,Ti},
+function smoothed_aggregation(A::SparseMatrixCSC{T,V},
                         symmetry = HermitianSymmetry(),
                         strength = SymmetricStrength(),
                         aggregate = StandardAggregation(),
@@ -10,12 +10,12 @@ function smoothed_aggregation{Tv,Ti}(A::SparseMatrixCSC{Tv,Ti},
                         max_coarse = 10,
                         diagonal_dominance = false,
                         keep = false,
-                        coarse_solver = Pinv())
+                        coarse_solver = Pinv()) where {T,V}
 
 
     n = size(A, 1)
     # B = kron(ones(n, 1), eye(1))
-    B = ones(n)
+    B = ones(T,n)
 
     #=max_levels, max_coarse, strength =
         levelize_strength_or_aggregation(max_levels, max_coarse, strength)
@@ -28,7 +28,7 @@ function smoothed_aggregation{Tv,Ti}(A::SparseMatrixCSC{Tv,Ti},
     # agg = [aggregate for _ in 1:max_levels - 1]
     # sm = [smooth for _ in 1:max_levels]
 
-    levels = Vector{Level{Tv,Ti}}()
+    levels = Vector{Level{T,V}}()
     bsr_flag = false
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
