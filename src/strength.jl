@@ -4,7 +4,8 @@ struct Classical{T} <: Strength
 end
 Classical(;θ = 0.25) = Classical(θ)
 
-function strength_of_connection{T, Ti, Tv}(c::Classical{T}, A::SparseMatrixCSC{Tv, Ti})
+function strength_of_connection(c::Classical{T}, 
+                A::SparseMatrixCSC{Tv,Ti}) where {T,Ti,Tv}
 
     θ = c.θ
 

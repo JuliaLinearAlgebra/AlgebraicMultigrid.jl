@@ -39,7 +39,7 @@ end
 
 function direct_interpolation(A, T, splitting)
 
-    fill!(T.nzval, 1.)
+    fill!(T.nzval, eltype(A)(1.))
     T .= A .* T
     Pp = rs_direct_interpolation_pass1(T, A, splitting)
     Pp .= Pp .+ 1
@@ -77,13 +77,13 @@ function rs_direct_interpolation_pass1(T, A, splitting)
  end
 
 
- function rs_direct_interpolation_pass2{Tv, Ti}(A::SparseMatrixCSC{Tv,Ti},
+ function rs_direct_interpolation_pass2(A::SparseMatrixCSC{Tv,Ti},
                                                 T::SparseMatrixCSC{Tv, Ti},
                                                 splitting::Vector{Ti},
-                                                Bp::Vector{Ti})
+                                                Bp::Vector{Ti}) where {Tv,Ti}
 
 
-    Bx = zeros(Float64, Bp[end] - 1)
+    Bx = zeros(Tv, Bp[end] - 1)
     Bj = zeros(Ti, Bp[end] - 1)
 
     n = size(A, 1)
@@ -152,7 +152,7 @@ function rs_direct_interpolation_pass1(T, A, splitting)
     end
 
     m = zeros(Ti, n)
-    sum = zero(eltype(m))
+    sum = zero(Ti)
     for i = 1:n
         m[i] = sum
         sum += splitting[i]
