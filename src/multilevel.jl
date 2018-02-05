@@ -66,8 +66,10 @@ function solve{T}(ml::MultiLevel, b::Vector{T},
                                     tol = 1e-5;
                                     verbose = false,
                                     log = false)
-    x = zeros(T, size(b))
-    residuals = Vector{T}()
+    V = promote_type(eltype(ml.levels[1].A), eltype(b))
+    x = zeros(V, size(b))
+    tol = eltype(b)(tol)
+    residuals = Vector{V}()
     A = length(ml) == 1 ? ml.final_A : ml.levels[1].A
     normb = norm(b)
     if normb != 0
@@ -91,14 +93,14 @@ function solve{T}(ml::MultiLevel, b::Vector{T},
         return x
     end
 end
-function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl)
+function __solve(v::V, ml, x, b, lvl)
 
     A = ml.levels[lvl].A
     presmoother!(ml.presmoother, A, x, b)
 
     res = b - A * x
     coarse_b = ml.levels[lvl].R * res
-    coarse_x = zeros(T, size(coarse_b))
+    coarse_x = zeros(eltype(coarse_b), size(coarse_b))
 
     if lvl == length(ml.levels)
         coarse_x = coarse_solver(ml.coarse_solver, ml.final_A, coarse_b)
@@ -113,5 +115,4 @@ function __solve{T}(v::V, ml, x::Vector{T}, b::Vector{T}, lvl)
     x
 end
 
-coarse_solver{Tv,Ti}(::Pinv, A::SparseMatrixCSC{Tv,Ti}, b::Vector{Tv}) =
-                                                        pinv(full(A)) * b
+coarse_solver(::Pinv, A, b) = pinv(full(A)) * b

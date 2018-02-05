@@ -32,7 +32,7 @@ smoother!(s::GaussSeidel, ::BackwardSweep, A, x, b) =
     gs!(A, b, x, size(A,1), -1, 1)
 
 
-function gs!{T,Ti}(A::SparseMatrixCSC{T,Ti}, b::Vector{T}, x::Vector{T}, start, step, stop)
+function gs!(A, b, x, start, step, stop)
     n = size(A, 1)
     z = zero(eltype(A))
     for i = start:step:stop

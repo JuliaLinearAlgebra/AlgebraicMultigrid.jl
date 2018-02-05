@@ -51,6 +51,7 @@ end
 # Direct Interpolation
 using AMG
 A = poisson(5)
+A = Float64.(A)
 splitting = [1,0,1,0,1]
 P, R = AMG.direct_interpolation(A, copy(A), splitting)
 @test P ==  [ 1.0  0.0  0.0

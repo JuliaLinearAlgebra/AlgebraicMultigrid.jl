@@ -82,7 +82,7 @@ function rs_direct_interpolation_pass1(T, A, splitting)
                                                 splitting::Vector{Ti},
                                                 Bp::Vector{Ti}) where {Tv,Ti}
 
-
+                                                
     Bx = zeros(Tv, Bp[end] - 1)
     Bj = zeros(Ti, Bp[end] - 1)
 
