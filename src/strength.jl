@@ -4,7 +4,8 @@ struct Classical{T} <: Strength
 end
 Classical(;θ = 0.25) = Classical(θ)
 
-function strength_of_connection{T, Ti, Tv}(c::Classical{T}, A::SparseMatrixCSC{Tv, Ti})
+function strength_of_connection(c::Classical{T}, 
+                A::SparseMatrixCSC{Tv,Ti}) where {T,Ti,Tv}
 
     θ = c.θ
 
@@ -77,13 +78,11 @@ SymmetricStrength() = SymmetricStrength(0.)
 
 function strength_of_connection{T}(s::SymmetricStrength{T}, A, bsr_flag = false)
 
-
-
     θ = s.θ
 
     if bsr_flag && θ == 0
         S = SparseMatrixCSC(size(A)...,
-                    A.colptr, A.rowval, ones(size(A.rowval)))
+                    A.colptr, A.rowval, ones(eltype(A), size(A.rowval)))
         return S
     else
         S = deepcopy(A)

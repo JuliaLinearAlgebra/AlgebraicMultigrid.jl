@@ -5,11 +5,11 @@ function approximate_spectral_radius(A, tol = 0.01,
     symmetric = false
 
     # Initial guess
-    v0 = rand(size(A,1))
+    v0 = rand(eltype(A), size(A,1))
     maxiter = min(size(A, 1), maxiter)
     ev = zeros(eltype(A), maxiter)
     max_index = 0
-    X = zeros(size(A,1), maxiter)
+    X = zeros(eltype(A), size(A,1), maxiter)
 
     for i in 1:restart+1
         evect, ev, H, V, flag =
@@ -90,8 +90,7 @@ function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
         scale!(w, 1/H[j+1,j])
         push!(V, w)
     end
-
-    Eigs, Vects = eig(H[1:maxiter, 1:maxiter], eye(maxiter))
+    Eigs, Vects = eig(H[1:maxiter, 1:maxiter], eye(eltype(A), maxiter))
 
     Vects, Eigs, H, V, flag
 end

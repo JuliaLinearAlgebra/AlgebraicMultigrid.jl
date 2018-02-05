@@ -95,7 +95,7 @@ function aggregation(::StandardAggregation, S)
 
     Tp = collect(1:n+1)
     x .= x .+ 1
-    Tx = ones(length(x))
+    Tx = ones(eltype(S), length(x))
 
     SparseMatrixCSC(N, M, Tp, x, Tx)
 end

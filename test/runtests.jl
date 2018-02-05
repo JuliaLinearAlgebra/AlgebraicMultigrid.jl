@@ -51,6 +51,7 @@ end
 # Direct Interpolation
 using AMG
 A = poisson(5)
+A = Float64.(A)
 splitting = [1,0,1,0,1]
 P, R = AMG.direct_interpolation(A, copy(A), splitting)
 @test P ==  [ 1.0  0.0  0.0
@@ -213,6 +214,23 @@ diff = x - [0.775725, -0.571202, -0.290989, -0.157001, -0.106981, 0.622652,
             0.0247913, 0.0238555, 0.0233681, 0.023096]
 @test sum(abs2, diff) < 1e-8
 
+
+end
+
+@testset "Precision" begin
+
+a = poisson(100)
+b = rand(size(a,1))
+
+# Iterate through all types
+for (T,V) in ((Float64, Float64), (Float32,Float32),
+        (Float64,Float32), (Float32,Float64))
+        a = T.(a)
+        ml = smoothed_aggregation(a)
+        b = V.(b)
+        c = cg(a, b, maxiter = 10)
+        @test eltype(solve(ml, b)) == eltype(c)
+end    
 
 end
 

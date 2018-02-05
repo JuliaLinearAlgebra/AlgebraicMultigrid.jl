@@ -32,7 +32,7 @@ smoother!(s::GaussSeidel, ::BackwardSweep, A, x, b) =
     gs!(A, b, x, size(A,1), -1, 1)
 
 
-function gs!{T,Ti}(A::SparseMatrixCSC{T,Ti}, b::Vector{T}, x::Vector{T}, start, step, stop)
+function gs!(A, b, x, start, step, stop)
     n = size(A, 1)
     z = zero(eltype(A))
     for i = start:step:stop
@@ -110,7 +110,7 @@ end
 function weight(::DiagonalWeighting, S, ω)
     D_inv = 1 ./ diag(S)
     D_inv_S = scale_rows(S, D_inv)
-    (ω / approximate_spectral_radius(D_inv_S)) * D_inv_S
+    (eltype(S)(ω) / approximate_spectral_radius(D_inv_S)) * D_inv_S
     #(ω) * D_inv_S
 end
 
