@@ -217,4 +217,21 @@ diff = x - [0.775725, -0.571202, -0.290989, -0.157001, -0.106981, 0.622652,
 
 end
 
+@testset "Precision" begin
+
+a = poisson(100)
+b = rand(size(a,1))
+
+# Iterate through all types
+for (T,V) in ((Float64, Float64), (Float32,Float32),
+        (Float64,Float32), (Float32,Float64))
+        a = T.(a)
+        ml = smoothed_aggregation(a)
+        b = V.(b)
+        c = cg(a, b, maxiter = 10)
+        @test eltype(solve(ml, b)) == eltype(c)
+end    
+
+end
+
 end
