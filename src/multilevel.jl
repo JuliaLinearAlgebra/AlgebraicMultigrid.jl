@@ -66,11 +66,12 @@ function solve{T}(ml::MultiLevel, b::Vector{T},
                                     tol = 1e-5;
                                     verbose = false,
                                     log = false)
-    V = promote_type(eltype(ml.levels[1].A), eltype(b))
+                                        
+    A = length(ml) == 1 ? ml.final_A : ml.levels[1].A                                   
+    V = promote_type(eltype(A), eltype(b))
     x = zeros(V, size(b))
     tol = eltype(b)(tol)
     residuals = Vector{V}()
-    A = length(ml) == 1 ? ml.final_A : ml.levels[1].A
     normb = norm(b)
     if normb != 0
         tol *= normb
