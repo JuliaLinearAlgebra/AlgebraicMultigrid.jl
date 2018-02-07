@@ -56,3 +56,82 @@ function generate_matrices()
 
     cases
 end
+
+function stand_agg(C)
+    n = size(C, 1)
+
+    R = Set(1:n)
+    j = 0
+    Cpts = Int[]
+
+    aggregates = -ones(Int, n)
+
+    # Pass 1
+    for i = 1:n
+        Ni = union!(Set(C.rowval[nzrange(C, i)]), Set(i))
+        if issubset(Ni, R)
+            push!(Cpts, i)
+            setdiff!(R, Ni)
+            for x in Ni
+                aggregates[x] = j
+            end
+            j += 1
+        end
+    end
+
+    # Pass 2
+    old_R = copy(R)
+    for i = 1:n
+        if ! (i in R)
+            continue
+        end
+
+        for x in C.rowval[nzrange(C, i)]
+            if !(x in old_R)
+                aggregates[i] = aggregates[x]
+                setdiff!(R, i)
+                break
+            end
+        end
+    end
+
+    # Pass 3
+    for i = 1:n
+        if !(i in R)
+            continue
+        end
+        Ni = union(Set(C.rowval[nzrange(C,i)]), Set(i))
+        push!(Cpts, i)
+
+        for x in Ni
+            if x in R
+                aggregates[x] = j
+            end
+            j += 1
+        end
+    end
+
+    @assert length(R) == 0
+
+    Pj = aggregates + 1
+    Pp = collect(1:n+1)
+    Px = ones(eltype(C), n)
+
+    SparseMatrixCSC(maximum(aggregates + 1), n, Pp, Pj, Px)
+end
+
+# Standard aggregation tests
+function test_standard_aggregation()
+
+    cases = generate_matrices()
+
+    for matrix in cases
+        for θ in (0.0, 0.1, 0.5, 1., 10.)
+            C = symmetric_soc(matrix, θ)
+            calc_matrix = aggregation(StandardAggregation(), matrix)
+            ref_matrix = stand_agg(matrix)
+            @test sum(abs2, ref_matrix - calc_matrix) < 1e-6
+        end
+    end
+
+end

@@ -244,6 +244,11 @@ end
         test_symmetric_soc()
 end
 
+@testset "Standard Aggregation" begin
+
+        test_standard_aggregation()
+end
+
 end
 
 end
