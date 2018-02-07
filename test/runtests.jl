@@ -4,6 +4,8 @@ using JLD
 using IterativeSolvers
 import AMG: V, coarse_solver, Pinv, Classical
 
+include("sa_tests.jl")
+
 @testset "AMG Tests" begin
 
 graph = load("test.jld")["G"]
@@ -231,6 +233,16 @@ for (T,V) in ((Float64, Float64), (Float32,Float32),
         c = cg(a, b, maxiter = 10)
         @test eltype(solve(ml, b)) == eltype(c)
 end    
+
+end
+
+# Smoothed Aggregation
+@testset "Smoothed Aggregation" begin
+
+@testset "Symmetric Strength of Connection" begin
+
+        test_symmetric_soc()
+end
 
 end
 
