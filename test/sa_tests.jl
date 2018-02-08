@@ -135,3 +135,52 @@ function test_standard_aggregation()
     end
 
 end
+
+# Test fit_candidates 
+function test_fit_candidates()
+
+    cases = generate_fit_candidates_cases()
+
+    for (i, (AggOp, fine_candidates)) in enumerate(cases)
+   
+        mask_candidates!(AggOp, fine_candidates)
+
+        Q, coarse_candidates = fit_candidates(AggOp, fine_candidates)
+
+        @test isapprox(fine_candidates, Q * coarse_candidates)
+        @test isapprox(Q * (Q' * fine_candidates), fine_candidates)
+    end
+end
+function mask_candidates!(A,B)
+    B[(diff(A.colptr) .== 0)] = 0
+end
+
+function generate_fit_candidates_cases()
+    cases = []
+
+    for T in (Float32, Float64)
+
+        # One candidate
+        AggOp = SparseMatrixCSC(2, 5, collect(1:6), 
+                        [1,1,1,2,2], ones(T,5))
+        B =  ones(T,5)
+        push!(cases, (AggOp, B))
+
+        AggOp = SparseMatrixCSC(2, 5, collect(1:6), 
+                        [2,2,1,1,1], ones(T,5))
+        B = ones(T, 5)
+        push!(cases, (AggOp, B))
+
+        AggOp = SparseMatrixCSC(3, 9, collect(1:10), 
+                        [1,1,1,2,2,2,3,3,3], ones(T, 9))
+        B = ones(T, 9)
+        push!(cases, (AggOp, B))
+
+        #AggOp = SparseMatrixCSC(3, 9, collect(1:10), 
+                        #[3,2,1,1,2,3,2,1,3], ones(T,9))
+        #B = T.(collect(1:9))
+        #push!(cases, (AggOp, B))
+    end
+
+    cases
+end

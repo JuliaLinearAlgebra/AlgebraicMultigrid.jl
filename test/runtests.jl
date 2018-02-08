@@ -249,6 +249,9 @@ end
         test_standard_aggregation()
 end
 
+@testset "Fit Candidates" begin
+        test_fit_candidates()
+end
 end
 
 end
