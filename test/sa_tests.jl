@@ -184,3 +184,35 @@ function generate_fit_candidates_cases()
 
     cases
 end
+
+# Test approximate spectral radius
+function test_approximate_spectral_radius()
+
+    cases = []
+    srand(0)
+
+    push!(cases, [2. 0.
+                  0. 1.])
+
+    push!(cases, [-2. 0.
+                   0  1])
+
+    push!(cases, [100.   0.  0.
+                    0. 101.  0.
+                    0.   0. 99.])
+
+    for i in 2:5
+        push!(cases, rand(i,i))
+    end
+
+    for A in cases
+        E,V = eig(A)
+        E = abs.(E)
+        largest_eig = find(E .== maximum(E))[1]
+        expected_eig = E[largest_eig]
+
+        @test isapprox(approximate_spectral_radius(A), expected_eig)
+
+    end
+
+end

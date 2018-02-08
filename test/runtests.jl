@@ -252,6 +252,10 @@ end
 @testset "Fit Candidates" begin
         test_fit_candidates()
 end
+
+@testset "Approximate Spectral Radius" begin
+        test_approximate_spectral_radius()
+end
 end
 
 end
