@@ -215,4 +215,19 @@ function test_approximate_spectral_radius()
 
     end
 
+    # Symmetric matrices
+    for A in cases
+        A = A + A'
+        E,V = eig(A)
+        E = abs.(E)
+        largest_eig = find(E .== maximum(E))[1]
+        expected_eig = E[largest_eig]
+
+        @test isapprox(approximate_spectral_radius(A), expected_eig)
+
+    end
+
+    # Test poisson matrix
+    A = poisson(50, 50)
+
 end
