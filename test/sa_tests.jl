@@ -227,7 +227,4 @@ function test_approximate_spectral_radius()
 
     end
 
-    # Test poisson matrix
-    A = poisson(50, 50)
-
 end
