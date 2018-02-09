@@ -57,15 +57,14 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
     S = strength_of_connection(strength, A, bsr_flag)
 
     # Aggregation operator
-    AggOp = aggregation(aggregate, S')
-
+    AggOp = aggregation(aggregate, S)
     # b = zeros(eltype(A), size(A, 1))
 
     # Improve candidates
     # relax!(improve_candidates, A, B, b)
     T, B = fit_candidates(AggOp, B)
 
-    P = smooth_prolongator(smooth, A, T, S, B)
+    P = smooth_prolongator(smooth, A, T, S', B)
     R = construct_R(symmetry, P)
     push!(levels, Level(A, P, R))
 
@@ -82,16 +81,20 @@ construct_R(::HermitianSymmetry, P) = P'
 function fit_candidates(AggOp, B, tol = 1e-10)
 
     A = AggOp.'
-    n_coarse = size(A, 2)
-    n_fine = size(A, 1)
+    n_fine, n_coarse = size(A)
     n_col = n_coarse
 
     R = zeros(eltype(B), n_coarse)
     Qx = zeros(eltype(B), nnz(A))
 
     copy!(Qx, B)
-    copy!(A.nzval, B)
-
+    # copy!(A.nzval, B)
+    for i = 1:n_col
+        for j in nzrange(A,i)
+            row = A.rowval[j]
+            A.nzval[j] = B[row]
+        end
+    end
     k = 1
     for i = 1:n_col
         norm_i = norm_col(A, Qx, i)
@@ -107,19 +110,20 @@ function fit_candidates(AggOp, B, tol = 1e-10)
             row = A.rowval[j]
             # Qx[row] *= scale
             #@show k
-            Qx[k] *= scale
-            k += 1
+            # Qx[k] *= scale
+            # k += 1
+            A.nzval[j] *= scale
         end
     end
 
-    SparseMatrixCSC(size(A)..., A.colptr, A.rowval, Qx), R
-    # A, R
+    # SparseMatrixCSC(size(A)..., A.colptr, A.rowval, Qx), R
+    A, R
 end
 function norm_col(A, Qx, i)
     s = zero(eltype(A))
     for j in nzrange(A, i)
-        # val = Qx[A.rowval[j]]
-        val = A.nzval[A.rowval[j]]
+        val = Qx[A.rowval[j]]
+        # val = A.nzval[A.rowval[j]]
         s += val*val
     end
     sqrt(s)

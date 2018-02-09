@@ -176,10 +176,10 @@ function generate_fit_candidates_cases()
         B = ones(T, 9)
         push!(cases, (AggOp, B))
 
-        #AggOp = SparseMatrixCSC(3, 9, collect(1:10), 
-                        #[3,2,1,1,2,3,2,1,3], ones(T,9))
-        #B = T.(collect(1:9))
-        #push!(cases, (AggOp, B))
+        AggOp = SparseMatrixCSC(3, 9, collect(1:10), 
+                        [3,2,1,1,2,3,2,1,3], ones(T,9))
+        B = T.(collect(1:9))
+        push!(cases, (AggOp, B))
     end
 
     cases
