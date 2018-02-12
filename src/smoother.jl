@@ -100,11 +100,13 @@ end
 
 struct DiagonalWeighting
 end
+struct LocalWeighting
+end
 
 function smooth_prolongator(j::JacobiProlongation,
                                         A, T, S, B,
                                         degree = 1,
-                                        weighting = DiagonalWeighting())
+                                        weighting = LocalWeighting())
     D_inv_S = weight(weighting, A, j.ω)
     P = T
     for i = 1:degree
@@ -118,6 +120,13 @@ function weight(::DiagonalWeighting, S, ω)
     D_inv_S = scale_rows(S, D_inv)
     (eltype(S)(ω) / approximate_spectral_radius(D_inv_S)) * D_inv_S
     # (ω) * D_inv_S
+end
+
+function weight(::LocalWeighting, S, ω)
+    D = abs.(S) * ones(size(S, 1))
+    D_inv = 1 ./ D[find(D)]
+    D_inv_S = scale_rows(S, D_inv)
+    eltype(S)(ω) * D_inv_S
 end
 
 #approximate_spectral_radius(A) =
