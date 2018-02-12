@@ -18,8 +18,11 @@ presmoother!(s, A, x, b) = smoother!(s, s.sweep, A, x, b)
 postsmoother!(s, A, x, b) = smoother!(s, s.sweep, A, x, b)
 relax!(s, A, x, b) = smoother!(s, s.sweep, A, x, b)
 
-smoother!(s::GaussSeidel, ::ForwardSweep, A, x, b) =
-                    gs!(A, b, x, 1, 1, size(A, 1))
+function smoother!(s::GaussSeidel, ::ForwardSweep, A, x, b)
+    for i in 1:s.iter
+        gs!(A, b, x, 1, 1, size(A, 1))
+    end
+end
 
 function smoother!(s::GaussSeidel, ::SymmetricSweep, A, x, b)
     for i in 1:s.iter
@@ -28,8 +31,11 @@ function smoother!(s::GaussSeidel, ::SymmetricSweep, A, x, b)
     end
 end
 
-smoother!(s::GaussSeidel, ::BackwardSweep, A, x, b) =
-    gs!(A, b, x, size(A,1), -1, 1)
+function smoother!(s::GaussSeidel, ::BackwardSweep, A, x, b)
+    for i in 1:s.iter
+        gs!(A, b, x, size(A,1), -1, 1)
+    end
+end
 
 
 function gs!(A, b, x, start, step, stop)
@@ -94,11 +100,13 @@ end
 
 struct DiagonalWeighting
 end
+struct LocalWeighting
+end
 
 function smooth_prolongator(j::JacobiProlongation,
                                         A, T, S, B,
                                         degree = 1,
-                                        weighting = DiagonalWeighting())
+                                        weighting = LocalWeighting())
     D_inv_S = weight(weighting, A, j.ω)
     P = T
     for i = 1:degree
@@ -111,7 +119,14 @@ function weight(::DiagonalWeighting, S, ω)
     D_inv = 1 ./ diag(S)
     D_inv_S = scale_rows(S, D_inv)
     (eltype(S)(ω) / approximate_spectral_radius(D_inv_S)) * D_inv_S
-    #(ω) * D_inv_S
+    # (ω) * D_inv_S
+end
+
+function weight(::LocalWeighting, S, ω)
+    D = abs.(S) * ones(size(S, 1))
+    D_inv = 1 ./ D[find(D)]
+    D_inv_S = scale_rows(S, D_inv)
+    eltype(S)(ω) * D_inv_S
 end
 
 #approximate_spectral_radius(A) =

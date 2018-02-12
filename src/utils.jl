@@ -5,7 +5,7 @@ function approximate_spectral_radius(A, tol = 0.01,
     symmetric = false
 
     # Initial guess
-    v0 = rand(eltype(A), size(A,1))
+    v0 = rand(eltype(A), size(A,2))
     maxiter = min(size(A, 1), maxiter)
     ev = zeros(eltype(A), maxiter)
     max_index = 0
@@ -21,7 +21,7 @@ function approximate_spectral_radius(A, tol = 0.01,
         # m, max_index = findmax(abs.(ev))
         m, max_index = findmaxabs(ev)
         error = H[nvecs, nvecs-1] * evect[end, max_index]
-        if abs(error) / abs(ev[max_index]) < tol || flag
+        if (abs(error) / abs(ev[max_index]) < tol) || flag
             # v0 = X * evect[:, max_index]
             A_mul_B!(v0, X, evect[:, max_index])
             break
@@ -63,6 +63,7 @@ function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
     # V = Vector{Vector{eltype(A)}}(maxiter + 1)
     # V = zeros(size(A,1), maxiter)
     # V[1] = v0
+    breakdown = find_breakdown(eltype(A))
     flag = false
 
     for j = 1:maxiter
@@ -73,11 +74,11 @@ function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
         for (i,v) in enumerate(V)
         # for i = 1:j
             v = V[i]
-            H[i,j] = dot(v, w)
+            H[i,j] = dot(conj.(v), w)
             BLAS.axpy!(-H[i,j], v, w)
         end
         H[j+1,j] = norm(w)
-        if H[j+1, j] < eps()
+        if H[j+1, j] < breakdown
             flag = true
             if H[j+1,j] != 0
                 scale!(w, 1/H[j+1,j])
@@ -94,3 +95,6 @@ function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
 
     Vects, Eigs, H, V, flag
 end
+
+find_breakdown(::Type{Float64}) = eps(Float64) * 10^6
+find_breakdown(::Type{Float32}) = eps(Float64) * 10^3

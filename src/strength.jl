@@ -107,20 +107,26 @@ function strength_of_connection{T}(s::SymmetricStrength{T}, A, bsr_flag = false)
         for j in nzrange(A, i)
             row = A.rowval[j]
             val = A.nzval[j]
-            if val*val < eps_Aii * diags[row]
-                S.nzval[j] = 0
+            if row != i
+                if val*val < eps_Aii * diags[row]
+                    S.nzval[j] = 0
+                end
             end
         end
     end
 
     dropzeros!(S)
 
-    S.nzval .= abs.(S.nzval)
-    # for i = 1:size(S.nzval, 1)
+    # S.nzval .= abs.(S.nzval)
+    #for i = 1:size(S.nzval, 1)
     #     S.nzval[i] = abs(S.nzval[i])
-    # end
+    #end
 
     scale_cols_by_largest_entry!(S)
+    
+    for i = 1:size(S.nzval, 1)
+         S.nzval[i] = abs(S.nzval[i])
+    end
 
     S
 end

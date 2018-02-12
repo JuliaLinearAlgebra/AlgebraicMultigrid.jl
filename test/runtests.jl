@@ -4,6 +4,8 @@ using JLD
 using IterativeSolvers
 import AMG: V, coarse_solver, Pinv, Classical
 
+include("sa_tests.jl")
+
 @testset "AMG Tests" begin
 
 graph = load("test.jld")["G"]
@@ -234,4 +236,33 @@ end
 
 end
 
+# Smoothed Aggregation
+@testset "Smoothed Aggregation" begin
+
+@testset "Symmetric Strength of Connection" begin
+
+        test_symmetric_soc()
+end
+
+@testset "Standard Aggregation" begin
+
+        test_standard_aggregation()
+end
+
+@testset "Fit Candidates" begin
+        test_fit_candidates()
+end
+
+@testset "Approximate Spectral Radius" begin
+        test_approximate_spectral_radius()
+end
+end
+
+@testset "Gauss Seidel" begin
+        test_gauss_seidel()
+end
+
+@testset "Jacobi Prolongation" begin
+        test_jacobi_prolongator()
+end
 end
