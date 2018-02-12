@@ -88,6 +88,7 @@ function solve{T}(ml::MultiLevel, b::Vector{T},
         push!(residuals, T(norm(b - A * x)))
     end
 
+    @show residuals
     if log
         return x, residuals
     else

@@ -258,4 +258,7 @@ end
 end
 end
 
+@testset "Gauss Seidel" begin
+        test_gauss_seidel()
+end
 end
