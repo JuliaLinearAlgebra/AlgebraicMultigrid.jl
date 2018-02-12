@@ -261,4 +261,8 @@ end
 @testset "Gauss Seidel" begin
         test_gauss_seidel()
 end
+
+@testset "Jacobi Prolongation" begin
+        test_jacobi_prolongator()
+end
 end

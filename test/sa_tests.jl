@@ -301,5 +301,14 @@ function test_gauss_seidel()
     resid2 = norm(A*x,2)
     @test resid1 < 0.01 && resid2 < 0.01
     @test isapprox(resid1, resid2)
-    
+
+end
+
+# Test jacobi smooth prolongator with local weighting
+function test_jacobi_prolongator()
+    A = poisson(100)
+    T = poisson(100)
+    x = smooth_prolongator(JacobiProlongation(4/3), A, T, 1, 1)
+    ref = load("ref_R.jld")["G"]
+    @test sum(abs2, x - ref) < 1e-6
 end
