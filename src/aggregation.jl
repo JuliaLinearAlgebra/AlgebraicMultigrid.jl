@@ -86,8 +86,11 @@ function fit_candidates(AggOp, B, tol = 1e-10)
 
     R = zeros(eltype(B), n_coarse)
     Qx = zeros(eltype(B), nnz(A))
-
-    copy!(Qx, B)
+   
+    # copy!(Qx, B)
+    for i = 1:size(Qx, 1)
+        Qx[i] = B[i]
+    end
     # copy!(A.nzval, B)
     for i = 1:n_col
         for j in nzrange(A,i)
