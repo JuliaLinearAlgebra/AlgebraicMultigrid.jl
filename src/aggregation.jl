@@ -61,7 +61,8 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
     # b = zeros(eltype(A), size(A, 1))
 
     # Improve candidates
-    # relax!(improve_candidates, A, B, b)
+    b = zeros(size(A,1))
+    relax!(improve_candidates, A, B, b)
     T, B = fit_candidates(AggOp, B)
 
     P = smooth_prolongator(smooth, A, T, S, B)
@@ -86,7 +87,6 @@ function fit_candidates(AggOp, B, tol = 1e-10)
 
     R = zeros(eltype(B), n_coarse)
     Qx = zeros(eltype(B), nnz(A))
-   
     # copy!(Qx, B)
     for i = 1:size(Qx, 1)
         Qx[i] = B[i]
@@ -125,7 +125,11 @@ end
 function norm_col(A, Qx, i)
     s = zero(eltype(A))
     for j in nzrange(A, i)
-        val = Qx[A.rowval[j]]
+        if A.rowval[j] > length(Qx)
+            val = 1
+        else
+            val = Qx[A.rowval[j]]
+        end
         # val = A.nzval[A.rowval[j]]
         s += val*val
     end

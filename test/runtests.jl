@@ -268,4 +268,7 @@ end
 
 # Issue #24
 nodes_not_agg()
+
+# Issue 26
+test_symmetric_sweep()
 end
