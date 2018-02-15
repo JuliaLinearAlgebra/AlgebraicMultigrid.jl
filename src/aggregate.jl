@@ -93,9 +93,19 @@ function aggregation(::StandardAggregation, S)
     y = y[1:next_aggregate]
     M,N = (n, next_aggregate)
 
-    Tp = collect(1:n+1)
-    x .= x .+ 1
-    Tx = ones(eltype(S), length(x))
+    # Some nodes not aggregated
+    if minimum(x) == -1
+        mask = x .!= -1
+        I = collect(1:n)[mask]
+        J = x[mask] + 1
+        V = ones(eltype(S), length(J))
+        AggOp = sparse(J,I,V,N,M)
+    else
+        Tp = collect(1:n+1)
+        x .= x .+ 1
+        Tx = ones(eltype(S), length(x))
+        AggOp = SparseMatrixCSC(N, M, Tp, x, Tx)
+    end
 
-    SparseMatrixCSC(N, M, Tp, x, Tx)
+    AggOp
 end

@@ -241,28 +241,31 @@ end
 
 @testset "Symmetric Strength of Connection" begin
 
-        test_symmetric_soc()
+    test_symmetric_soc()
 end
 
 @testset "Standard Aggregation" begin
 
-        test_standard_aggregation()
+    test_standard_aggregation()
 end
 
 @testset "Fit Candidates" begin
-        test_fit_candidates()
+    test_fit_candidates()
 end
 
 @testset "Approximate Spectral Radius" begin
-        test_approximate_spectral_radius()
+    test_approximate_spectral_radius()
 end
 end
 
 @testset "Gauss Seidel" begin
-        test_gauss_seidel()
+    test_gauss_seidel()
 end
 
 @testset "Jacobi Prolongation" begin
-        test_jacobi_prolongator()
+    test_jacobi_prolongator()
 end
+
+# Issue #24
+nodes_not_agg()
 end
