@@ -13,6 +13,7 @@ end
 GaussSeidel(iter = 1) = GaussSeidel(SymmetricSweep(), iter)
 GaussSeidel(f::ForwardSweep) = GaussSeidel(f, 1)
 GaussSeidel(b::BackwardSweep) = GaussSeidel(b, 1)
+GaussSeidel(s::SymmetricSweep) = GaussSeidel(s, 1)
 
 presmoother!(s, A, x, b) = smoother!(s, s.sweep, A, x, b)
 postsmoother!(s, A, x, b) = smoother!(s, s.sweep, A, x, b)
@@ -26,8 +27,8 @@ end
 
 function smoother!(s::GaussSeidel, ::SymmetricSweep, A, x, b)
     for i in 1:s.iter
-        smoother!(s, ForwardSweep(), A, x, b)
-        smoother!(s, BackwardSweep(), A, x, b)
+        gs!(A, b, x, 1, 1, size(A, 1))
+        gs!(A, b, x, size(A,1), -1, 1)
     end
 end
 

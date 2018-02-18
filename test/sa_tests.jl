@@ -320,3 +320,18 @@ function nodes_not_agg()
     @test size(ml.levels[2].A) == (11,11)
     @test size(ml.final_A) == (2,2)
 end
+
+# Issue 26
+import AMG: relax!
+function test_symmetric_sweep()
+    A = poisson(10)
+    s = GaussSeidel(SymmetricSweep(), 4)
+    x = ones(size(A,1))
+    b = zeros(size(A,1))
+    relax!(s, A, x, b)
+    @test sum(abs2, x - [0.176765; 0.353529; 0.497517; 0.598914; 
+                            0.653311; 0.659104; 0.615597; 0.52275; 
+                            0.382787; 0.203251]) < 1e-6
+        
+end
+
