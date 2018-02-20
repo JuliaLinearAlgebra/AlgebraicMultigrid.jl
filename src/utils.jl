@@ -123,17 +123,19 @@ spmatvec(A::SparseMatrixCSC{TA,S}, x::StridedVector{Tx}) where {TA,S,Tx} =
     (T = promote_type(TA, Tx); mul!(one(T), A, x, zero(T), similar(x, T, A.m)))=#
 
 # export spmatvec
-using Base.Threads 
-import Base: *
-function *(A::SparseMatrixCSC{T,V}, b::Vector{T}) where {T,V}
-    m, n = size(A)
-    ret = zeros(T, m)
-    @threads for i = 1:n
-        for j in nzrange(A, i)
-            row = A.rowval[j]
-            val = A.nzval[j]
-            ret[row] += val * b[i]
+
+@static if haskey(ENV, "JULIA_NUM_THREADS")
+    import Base: *
+    function *(A::SparseMatrixCSC{T,V}, b::Vector{T}) where {T,V}
+        m, n = size(A)
+        ret = zeros(T, m)
+        @threads for i = 1:n
+            for j in nzrange(A, i)
+                row = A.rowval[j]
+                val = A.nzval[j]
+                ret[row] += val * b[i]
+            end
         end
+        ret
     end
-    ret
 end
