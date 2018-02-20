@@ -98,3 +98,42 @@ end
 
 find_breakdown(::Type{Float64}) = eps(Float64) * 10^6
 find_breakdown(::Type{Float32}) = eps(Float64) * 10^3
+
+using Base.Threads
+#=function mul!(α::Number, A::SparseMatrixCSC, B::StridedVecOrMat, β::Number, C::StridedVecOrMat)
+    A.n == size(B, 1) || throw(DimensionMismatch())
+    A.m == size(C, 1) || throw(DimensionMismatch())
+    size(B, 2) == size(C, 2) || throw(DimensionMismatch())
+    nzv = A.nzval
+    rv = A.rowval
+    if β != 1
+        β != 0 ? scale!(C, β) : fill!(C, zero(eltype(C)))
+    end
+    for k = 1:size(C, 2)
+        for col = 1:A.n
+            αxj = α*B[col,k]
+            for j = A.colptr[col]:(A.colptr[col + 1] - 1)
+                C[rv[j], k] += nzv[j]*αxj
+            end
+        end
+    end
+    C
+end
+spmatvec(A::SparseMatrixCSC{TA,S}, x::StridedVector{Tx}) where {TA,S,Tx} =
+    (T = promote_type(TA, Tx); mul!(one(T), A, x, zero(T), similar(x, T, A.m)))=#
+
+# export spmatvec
+using Base.Threads 
+import Base: *
+function *(A::SparseMatrixCSC{T,V}, b::Vector{T}) where {T,V}
+    m, n = size(A)
+    ret = zeros(T, m)
+    @threads for i = 1:n
+        for j in nzrange(A, i)
+            row = A.rowval[j]
+            val = A.nzval[j]
+            ret[row] += val * b[i]
+        end
+    end
+    ret
+end
