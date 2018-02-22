@@ -124,10 +124,26 @@ function weight(::DiagonalWeighting, S, ω)
 end
 
 function weight(::LocalWeighting, S, ω)
-    D = abs.(S) * ones(size(S, 1))
+    #=D = abs.(S) * ones(eltype(S), size(S, 1))
     D_inv = 1 ./ D[find(D)]
     D_inv_S = scale_rows(S, D_inv)
-    eltype(S)(ω) * D_inv_S
+    eltype(S)(ω) * D_inv_S=#
+    D = zeros(eltype(S), size(S,1))
+    for i = 1:size(S, 1)
+        for j in nzrange(S, i)
+            row = S.rowval[j]
+            val = S.nzval[j]
+            D[row] += abs(val)
+        end
+    end
+    for i = 1:size(D, 1)
+        if D[i] != 0
+            D[i] = 1/D[i]
+        end
+    end
+    D_inv_S = scale_rows(S, D)
+    # eltype(S)(ω) * D_inv_S
+    scale!(D_inv_S, eltype(S)(ω))
 end
 
 #approximate_spectral_radius(A) =

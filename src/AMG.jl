@@ -3,6 +3,8 @@ module AMG
 import IterativeSolvers: gauss_seidel!
 using Base.Threads
 
+const MT = false
+
 include("utils.jl")
 export approximate_spectral_radius
 
