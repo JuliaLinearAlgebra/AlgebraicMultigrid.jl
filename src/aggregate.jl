@@ -1,11 +1,12 @@
 struct StandardAggregation
 end
 
-function aggregation(::StandardAggregation, S)
+function aggregation(::StandardAggregation, S::SparseMatrixCSC{T,R}) where {T,R}
 
+    @show R
     n = size(S, 1)
-    x = zeros(Int, n)
-    y = zeros(Int, n)
+    x = zeros(R, n)
+    y = zeros(R, n)
 
     next_aggregate = 1
 
@@ -96,12 +97,12 @@ function aggregation(::StandardAggregation, S)
     # Some nodes not aggregated
     if minimum(x) == -1
         mask = x .!= -1
-        I = collect(1:n)[mask]
+        I = collect(R, 1:n)[mask]
         J = x[mask] + 1
         V = ones(eltype(S), length(J))
         AggOp = sparse(J,I,V,N,M)
     else
-        Tp = collect(1:n+1)
+        Tp = collect(R, 1:n+1)
         x .= x .+ 1
         Tx = ones(eltype(S), length(x))
         AggOp = SparseMatrixCSC(N, M, Tp, x, Tx)
