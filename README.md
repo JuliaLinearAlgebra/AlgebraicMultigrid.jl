@@ -1,4 +1,4 @@
-# AMG
+# Algebraic Multigrid (AMG)
 
 [![Build Status](https://travis-ci.org/ranjanan/AMG.jl.svg?branch=master)](https://travis-ci.org/ranjanan/AMG.jl)
 [![Coverage Status](https://coveralls.io/repos/ranjanan/AMG.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/ranjanan/AMG.jl?branch=master)
@@ -45,15 +45,20 @@ c = cg(A, A*ones(1000), Pl = p)
 ## Features and Roadmap
 
 This package currently supports: 
-1. Ruge-Stuben Solver
-2. Classical Strength of Connection
-3. Ruge-Stuben C/F splitting
-4. Gauss-Siedel smoothers
-5. V cycle multigrid
 
-The following have experimental support:
-1. SmoothedAggregation Solver
-2. Standard Strength of Conneciton
+AMG Styles:
+* Ruge-Stuben Solver
+* Smoothed Aggregation (SA)
+
+Strength of Connection: 
+* Classical Strength of Connection
+* Symmetric Strength of Connection
+
+Smoothers:
+* Gauss Seidel (Symmetric, Forward, Backward)
+
+Cycling:
+* V cycle 
 
 In the future, this package will support:
 1. Other splitting methods (like CLJP)
