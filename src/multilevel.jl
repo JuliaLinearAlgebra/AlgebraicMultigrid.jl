@@ -61,11 +61,11 @@ struct V <: Cycle
 end
 
 function solve{T}(ml::MultiLevel, b::Vector{T},
-                                    maxiter = 100,
-                                    cycle = V(),
-                                    tol = 1e-5;
-                                    verbose = false,
-                                    log = false)
+                                    cycle::Cycle = V();
+                                    maxiter::Int = 100,
+                                    tol::Float64 = 1e-5,
+                                    verbose::Bool = false,
+                                    log::Bool = false)
                                         
     A = length(ml) == 1 ? ml.final_A : ml.levels[1].A                                   
     V = promote_type(eltype(A), eltype(b))
