@@ -60,6 +60,25 @@ abstract type Cycle end
 struct V <: Cycle
 end
 
+"""
+    solve(ml::MultiLevel, b::Vector, cycle, kwargs...)
+
+Execute multigrid cycling.
+
+Arguments
+=========
+* ml::MultiLevel - the multigrid hierarchy
+* b::Vector - the right hand side
+* cycle -  multigird cycle to execute at each iteration. Defaults to AMG.V()
+
+Keyword Arguments
+=================
+* tol::Float64 - tolerance criteria for convergence
+* maxiter::Int64 - maximum number of iterations to execute
+* verbose::Bool - display residual at each iteration
+* log::Bool - return vector of residuals along with solution
+
+"""
 function solve{T}(ml::MultiLevel, b::Vector{T},
                                     cycle::Cycle = V();
                                     maxiter::Int = 100,
