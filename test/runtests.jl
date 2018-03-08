@@ -266,6 +266,11 @@ end
     test_jacobi_prolongator()
 end
 
+@testset "Int32 support" begin
+    a = sparse(Int32.(1:10), Int32.(1:10), rand(10))
+    @inferred smoothed_aggregation(a)
+end
+
 # Issue #24
 nodes_not_agg()
 
