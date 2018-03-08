@@ -274,6 +274,24 @@ end
 # Issue #24
 nodes_not_agg()
 
-# Issue 26
+# Issue #26
 test_symmetric_sweep()
+
+# Issue #31
+for sz in [10, 5, 2]
+    a = poisson(sz)
+    ml = ruge_stuben(a)
+    @test isempty(ml.levels)
+    @test size(ml.final_A) == (sz,sz)
+    @test AMG.operator_complexity(ml) == 1
+    @test AMG.grid_complexity(ml) == 1
+
+    a = poisson(sz)
+    ml = smoothed_aggregation(a)
+    @test isempty(ml.levels)
+    @test size(ml.final_A) == (sz,sz)
+    @test AMG.operator_complexity(ml) == 1
+    @test AMG.grid_complexity(ml) == 1
+end
+
 end

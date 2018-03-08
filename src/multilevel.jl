@@ -24,11 +24,16 @@ function Base.show(io::IO, ml::MultiLevel)
     op = operator_complexity(ml)
     g = grid_complexity(ml)
     c = ml.coarse_solver
-    total_nnz = sum(nnz(level.A) for level in ml.levels) + nnz(ml.final_A)
+    total_nnz = nnz(ml.final_A) 
+    if !isempty(ml.levels) 
+        total_nnz += sum(nnz(level.A) for level in ml.levels)
+    end
     lstr = ""
+    if !isempty(ml.levels)
     for (i, level) in enumerate(ml.levels)
         lstr = lstr *
             @sprintf "   %2d   %10d   %10d [%5.2f%%]\n" i size(level.A, 1) nnz(level.A) (100 * nnz(level.A) / total_nnz)
+    end
     end
     lstr = lstr *
         @sprintf "   %2d   %10d   %10d [%5.2f%%]" length(ml.levels) + 1 size(ml.final_A, 1) nnz(ml.final_A) (100 * nnz(ml.final_A) / total_nnz)
@@ -47,13 +52,21 @@ function Base.show(io::IO, ml::MultiLevel)
 end
 
 function operator_complexity(ml::MultiLevel)
-    (sum(nnz(level.A) for level in ml.levels) +
-            nnz(ml.final_A)) / nnz(ml.levels[1].A)
+    if !isempty(ml.levels)
+        (sum(nnz(level.A) for level in ml.levels) +
+                nnz(ml.final_A)) / nnz(ml.levels[1].A)
+    else
+        1.
+    end
 end
 
 function grid_complexity(ml::MultiLevel)
-    (sum(size(level.A, 1) for level in ml.levels) +
-            size(ml.final_A, 1)) / size(ml.levels[1].A, 1)
+    if !isempty(ml.levels)
+        (sum(size(level.A, 1) for level in ml.levels) +
+                size(ml.final_A, 1)) / size(ml.levels[1].A, 1)
+    else
+        1.
+    end
 end
 
 abstract type Cycle end
