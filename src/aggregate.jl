@@ -3,7 +3,6 @@ end
 
 function aggregation(::StandardAggregation, S::SparseMatrixCSC{T,R}) where {T,R}
 
-    @show R
     n = size(S, 1)
     x = zeros(R, n)
     y = zeros(R, n)
