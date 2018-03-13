@@ -133,6 +133,8 @@ function __solve(v::V, ml, x, b, lvl)
     presmoother!(ml.presmoother, A, x, b)
 
     res = b - A * x
+    @show lvl
+    @show norm(res)
     coarse_b = ml.levels[lvl].R * res
     coarse_x = zeros(eltype(coarse_b), size(coarse_b))
 
