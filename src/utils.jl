@@ -124,7 +124,7 @@ spmatvec(A::SparseMatrixCSC{TA,S}, x::StridedVector{Tx}) where {TA,S,Tx} =
 
 # export spmatvec
 
-@static if haskey(ENV, "JULIA_NUM_THREADS")
+#=@static if haskey(ENV, "JULIA_NUM_THREADS")
     info("Initializing AMG to use $(nthreads()) threads")
     import Base: *
     function *(A::SparseMatrixCSC{T,V}, b::Vector{T}) where {T,V}
@@ -139,4 +139,4 @@ spmatvec(A::SparseMatrixCSC{TA,S}, x::StridedVector{Tx}) where {TA,S,Tx} =
         end
         ret
     end
-end
+end=#
