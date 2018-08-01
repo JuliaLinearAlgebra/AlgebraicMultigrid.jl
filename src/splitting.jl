@@ -38,18 +38,17 @@ function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 	index_to_node = zeros(Int,n)
 	node_to_index = zeros(Int,n)
 
-    # compute lambdas - number of neighbors
     for i = 1:n
-        lambda[i] = Sp[i+1] - Sp[i]
-		# number of nodes with a certain neighbor count, counting the node itself
+		# compute lambda[i] - the number of nodes strongly coupled to node i
+		lambda[i] = Sp[i+1] - Sp[i]
         interval_count[lambda[i] + 1] += 1
     end
 	
 	# initial interval_ptr
 	@views accumulate!(+, interval_ptr[2:end], interval_count[1:end-1])
 
-	# sort the nodes by their number of neighbours:
-	#   `index_to_node[idx]` is the node with `idx`th least number of neighbours
+	# sort the nodes by the number of nodes strongly coupled to them:
+	#   `index_to_node[idx]` is the node with `idx`th least number of nodes coupled to it
 	#   `node_to_index[idx]` is the position of the `idx`th node in `index_to_node`
 	# linear time and allocation-free equivalent to:
 	#   sortperm!(index_to_node, lambda)
@@ -64,7 +63,7 @@ function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
     end
 	splitting = fill(U_NODE, n)
 
-    # all nodes with no neighbors (but themselves) become F nodes
+    # all nodes which no other nodes are strongly coupled to become F nodes
     for i = 1:n
 		if lambda[i] == 0
             splitting[i] = F_NODE
@@ -75,7 +74,7 @@ function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 	#	highest lambda[i].
 
 	# index_to_node[interval_ptr[i]+1 : interval_ptr[i+1]] includes the set of U nodes with 
-	#	i-1 neighbors, and other "inactive" F and C nodes.
+	#	i-1 nodes strongly coupled to them, and other "inactive" F and C nodes.
 	
 	# C nodes are always in index_to_node[top_index:n]. So at the end of the last 
 	#	non-empty interval_ptr[i]+1 : interval_ptr[i+1] will be all the C nodes together 
@@ -99,7 +98,7 @@ function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 			if splitting[row] == U_NODE
 				splitting[row] = F_NODE
 
-				# increment lambda for all U neighbours of the new F points
+				# increment lambda for all U nodes that node `row` is strongly coupled to
 				for k in nzrange(T, row)
 					rowk = T.rowval[k]
 
@@ -129,7 +128,7 @@ function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)
 			end
 		end
 
-		# decrement lambda for all U neighbours of the new C point
+		# decrement lambda for all U nodes that node i is strongly coupled to
 		for j in nzrange(T, i)
 			row = T.rowval[j]
 			if splitting[row] == U_NODE
