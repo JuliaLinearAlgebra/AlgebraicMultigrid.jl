@@ -5,6 +5,8 @@ using Compat, Compat.LinearAlgebra
 using Compat.SparseArrays, Compat.Printf
 using Base.Threads
 
+using Compat: rmul!
+
 const MT = false
 
 include("utils.jl")

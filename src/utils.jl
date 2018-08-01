@@ -21,19 +21,19 @@ function approximate_spectral_radius(A, tol = 0.01,
         # m, max_index = findmax(abs.(ev))
         m, max_index = findmaxabs(ev)
         error = H[nvecs, nvecs-1] * evect[end, max_index]
+        @static if VERSION < v"0.7-"
+            @views A_mul_B!(v0, X, evect[:, max_index])
+        else
+            @views mul!(v0, X, evect[:, max_index])
+        end
         if (abs(error) / abs(ev[max_index]) < tol) || flag
             # v0 = X * evect[:, max_index]
-            mul!(v0, X, evect[:, max_index])
             break
-        else
-            # v0 = X * evect[:, max_index]
-            mul!(v0, X, evect[:, max_index])
         end
     end
-
     ρ = abs(ev[max_index])
-
 end
+
 function findmaxabs(arr)
     m = abs(arr[1])
     m_i = 1
