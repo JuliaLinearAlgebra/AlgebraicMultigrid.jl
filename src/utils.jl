@@ -91,7 +91,11 @@ function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
         rmul!(w, 1/H[j+1,j])
         push!(V, w)
     end
-    Eigs, Vects = (eigen(H[1:maxiter, 1:maxiter], Matrix{eltype(A)}(I, maxiter, maxiter))...,)
+    @static if VERSION < v"0.7-"
+        Eigs, Vects = eig(H[1:maxiter, 1:maxiter], Matrix{eltype(A)}(I, maxiter, maxiter))
+    else
+        Eigs, Vects = (eigen(H[1:maxiter, 1:maxiter], Matrix{eltype(A)}(I, maxiter, maxiter))...,)
+    end
 
     Vects, Eigs, H, V, flag
 end

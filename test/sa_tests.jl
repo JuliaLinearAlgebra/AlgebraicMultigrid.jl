@@ -206,19 +206,26 @@ function test_approximate_spectral_radius()
     end
 
     for A in cases
-        E,V = (eigen(A)...,)
+        @static if VERSION < v"0.7-"
+            E,V = eig(A)            
+        else
+            E,V = (eigen(A)...,)
+        end
         E = abs.(E)
         largest_eig = findall(E .== maximum(E))[1]
         expected_eig = E[largest_eig]
 
         @test isapprox(approximate_spectral_radius(A), expected_eig)
-
     end
 
     # Symmetric matrices
     for A in cases
         A = A + A'
-        E,V = (eigen(A)...,)
+        @static if VERSION < v"0.7-"
+            E,V = eig(A)            
+        else
+            E,V = (eigen(A)...,)
+        end
         E = abs.(E)
         largest_eig = findall(E .== maximum(E))[1]
         expected_eig = E[largest_eig]

@@ -96,8 +96,13 @@ for i = 1:2
 end
 @test size(ml.final_A, 1) == 2
 @test nnz(ml.final_A) == 4
-@test round(AMG.operator_complexity(ml), digits=3) ≈ 1.142
-@test round(AMG.grid_complexity(ml), digits=3) ≈ 1.190
+@static if VERSION < v"0.7-"
+    @test round(AMG.operator_complexity(ml), 3) ≈ 1.142
+    @test round(AMG.grid_complexity(ml), 3) ≈ 1.190
+else
+    @test round(AMG.operator_complexity(ml), digits=3) ≈ 1.142
+    @test round(AMG.grid_complexity(ml), digits=3) ≈ 1.190
+end
 
 include("gmg.jl")
 
