@@ -11,7 +11,7 @@ function symmetric_soc(A::SparseMatrixCSC{T,V}, θ) where {T,V}
     j = j[mask]
     v = v[mask]
 
-    S = sparse(i,j,v, size(A)...) + spdiagm(D)
+    S = sparse(i,j,v, size(A)...) + spdiagm(0=>D)
 
     scale_cols_by_largest_entry!(S)
 
@@ -113,11 +113,11 @@ function stand_agg(C)
 
     @assert length(R) == 0
 
-    Pj = aggregates + 1
+    Pj = aggregates .+ 1
     Pp = collect(1:n+1)
     Px = ones(eltype(C), n)
 
-    SparseMatrixCSC(maximum(aggregates + 1), n, Pp, Pj, Px)
+    SparseMatrixCSC(maximum(aggregates .+ 1), n, Pp, Pj, Px)
 end
 
 # Standard aggregation tests
@@ -152,7 +152,7 @@ function test_fit_candidates()
     end
 end
 function mask_candidates!(A,B)
-    B[(diff(A.colptr) .== 0)] = 0
+    B[(diff(A.colptr) .== 0)] .= 0
 end
 
 function generate_fit_candidates_cases()
@@ -206,9 +206,9 @@ function test_approximate_spectral_radius()
     end
 
     for A in cases
-        E,V = eig(A)
+        E,V = (eigen(A)...,)
         E = abs.(E)
-        largest_eig = find(E .== maximum(E))[1]
+        largest_eig = findall(E .== maximum(E))[1]
         expected_eig = E[largest_eig]
 
         @test isapprox(approximate_spectral_radius(A), expected_eig)
@@ -218,9 +218,9 @@ function test_approximate_spectral_radius()
     # Symmetric matrices
     for A in cases
         A = A + A'
-        E,V = eig(A)
+        E,V = (eigen(A)...,)
         E = abs.(E)
-        largest_eig = find(E .== maximum(E))[1]
+        largest_eig = findall(E .== maximum(E))[1]
         expected_eig = E[largest_eig]
 
         @test isapprox(approximate_spectral_radius(A), expected_eig)
@@ -234,8 +234,7 @@ import AMG: gs!, relax!
 function test_gauss_seidel()
     
     N = 1
-    A = spdiagm((2 * ones(N), -ones(N-1), -ones(N-1)), 
-                    (0, -1, 1), N, N) 
+    A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = zeros(N)
     s = GaussSeidel(ForwardSweep())
@@ -243,8 +242,7 @@ function test_gauss_seidel()
     @test sum(abs2, x - zeros(N)) < 1e-8
 
     N = 3 
-    A = spdiagm((2 * ones(N), -ones(N-1), -ones(N-1)), 
-                        (0, -1, 1), N, N) 
+    A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = zeros(N)
     s = GaussSeidel(ForwardSweep())
@@ -252,8 +250,7 @@ function test_gauss_seidel()
     @test sum(abs2, x - [1.0/2.0, 5.0/4.0, 5.0/8.0]) < 1e-8
 
     N = 1
-    A = spdiagm((2 * ones(N), -ones(N-1), -ones(N-1)), 
-                    (0, -1, 1), N, N) 
+    A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = zeros(N)
     s = GaussSeidel(BackwardSweep())
@@ -261,8 +258,7 @@ function test_gauss_seidel()
     @test sum(abs2, x - zeros(N)) < 1e-8
 
     N = 3 
-    A = spdiagm((2 * ones(N), -ones(N-1), -ones(N-1)), 
-                        (0, -1, 1), N, N) 
+    A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = zeros(N)
     s = GaussSeidel(BackwardSweep())
@@ -270,8 +266,7 @@ function test_gauss_seidel()
     @test sum(abs2, x - [1.0/8.0, 1.0/4.0, 1.0/2.0]) < 1e-8
 
     N = 1
-    A = spdiagm((2 * ones(N), -ones(N-1), -ones(N-1)), 
-                    (0, -1, 1), N, N) 
+    A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = eltype(A).([10.])
     s = GaussSeidel(ForwardSweep())
@@ -279,8 +274,7 @@ function test_gauss_seidel()
     @test sum(abs2, x - [5.]) < 1e-8
 
     N = 3 
-    A = spdiagm((2 * ones(N), -ones(N-1), -ones(N-1)), 
-                        (0, -1, 1), N, N) 
+    A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = eltype(A).([10., 20., 30.])
     s = GaussSeidel(ForwardSweep())
@@ -288,8 +282,7 @@ function test_gauss_seidel()
     @test sum(abs2, x - [11.0/2.0, 55.0/4, 175.0/8.0]) < 1e-8
 
     N = 100
-    A = spdiagm((2 * ones(N), -ones(N-1), -ones(N-1)), 
-                    (0, -1, 1), N, N) 
+    A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = ones(eltype(A), N)
     b = zeros(eltype(A), N)
     s1 = GaussSeidel(ForwardSweep(), 200)

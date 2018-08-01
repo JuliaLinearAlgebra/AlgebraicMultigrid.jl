@@ -16,7 +16,7 @@ abstract type CoarseSolver end
 struct Pinv <: CoarseSolver
 end
 
-MultiLevel{Ti,Tv}(l::Vector{Level{Ti,Tv}}, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother) =
+MultiLevel(l::Vector{Level{Ti,Tv}}, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother) where {Ti,Tv} =
     MultiLevel(l, A, Pinv(), presmoother, postsmoother)
 Base.length(ml) = length(ml.levels) + 1
 
@@ -92,12 +92,12 @@ Keyword Arguments
 * log::Bool - return vector of residuals along with solution
 
 """
-function solve{T}(ml::MultiLevel, b::Vector{T},
+function solve(ml::MultiLevel, b::Vector{T},
                                     cycle::Cycle = V();
                                     maxiter::Int = 100,
                                     tol::Float64 = 1e-5,
                                     verbose::Bool = false,
-                                    log::Bool = false)
+                                    log::Bool = false) where {T}
                                         
     A = length(ml) == 1 ? ml.final_A : ml.levels[1].A                                   
     V = promote_type(eltype(A), eltype(b))
@@ -149,4 +149,4 @@ function __solve(v::V, ml, x, b, lvl)
     x
 end
 
-coarse_solver(::Pinv, A, b) = pinv(full(A)) * b
+coarse_solver(::Pinv, A, b) = pinv(Matrix(A)) * b

@@ -143,7 +143,7 @@ function weight(::LocalWeighting, S, ω)
     end
     D_inv_S = scale_rows(S, D)
     # eltype(S)(ω) * D_inv_S
-    scale!(D_inv_S, eltype(S)(ω))
+    rmul!(D_inv_S, eltype(S)(ω))
 end
 
 #approximate_spectral_radius(A) =

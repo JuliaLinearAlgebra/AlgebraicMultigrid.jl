@@ -22,9 +22,9 @@ function extend!(levels, A::SparseMatrixCSC{Ti,Tv}) where {Ti,Tv}
     size_C = rem(size_F,2) == 0 ? div((size_F-1), 2) +1 : div((size_F-1), 2)
     total_len = size_C + 2 * (size_C - 1)
 
-    I = Vector{Tv}(total_len)
-    J = Vector{Tv}(total_len)
-    V = Vector{Ti}(total_len)
+    I = Vector{Tv}(undef, total_len)
+    J = Vector{Tv}(undef, total_len)
+    V = Vector{Ti}(undef, total_len)
 
     l = 1
     for k = 1:size_C
@@ -39,7 +39,7 @@ function extend!(levels, A::SparseMatrixCSC{Ti,Tv}) where {Ti,Tv}
     
     P = sparse(I, J, V, size_F, size_C)
 
-    R = transpose(P)
+    R = copy(P')
 
     push!(levels, Level(A, P, R))
 

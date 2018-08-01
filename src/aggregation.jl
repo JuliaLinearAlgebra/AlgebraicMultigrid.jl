@@ -77,11 +77,11 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
 
     A, B, bsr_flag
 end
-construct_R(::HermitianSymmetry, P) = P'
+construct_R(::HermitianSymmetry, P) = copy(P')
 
 function fit_candidates(AggOp, B, tol = 1e-10)
 
-    A = AggOp.'
+    A = copy(AggOp')
     n_fine, n_coarse = size(A)
     n_col = n_coarse
 

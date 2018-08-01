@@ -1,7 +1,6 @@
-using AMG
-using Base.Test
-using JLD
-using IterativeSolvers
+using Compat, Compat.Test, Compat.LinearAlgebra
+using Compat.SparseArrays, Compat.DelimitedFiles, Compat.Random
+using IterativeSolvers, JLD, AMG
 import AMG: V, coarse_solver, Pinv, Classical
 
 include("sa_tests.jl")
@@ -18,7 +17,7 @@ ref_split = readdlm("ref_split_test.txt")
 A = poisson(5)
 A = float.(A)
 S, T = strength_of_connection(Classical(0.2), A)
-@test full(S) == [ 1.0  0.5  0.0  0.0  0.0
+@test Matrix(S) == [ 1.0  0.5  0.0  0.0  0.0
                    0.5  1.0  0.5  0.0  0.0
                    0.0  0.5  1.0  0.5  0.0
                    0.0  0.0  0.5  1.0  0.5
@@ -97,8 +96,8 @@ for i = 1:2
 end
 @test size(ml.final_A, 1) == 2
 @test nnz(ml.final_A) == 4
-@test round(AMG.operator_complexity(ml), 3) ≈ 1.142
-@test round(AMG.grid_complexity(ml), 3) ≈ 1.190
+@test round(AMG.operator_complexity(ml), digits=3) ≈ 1.142
+@test round(AMG.grid_complexity(ml), digits=3) ≈ 1.190
 
 include("gmg.jl")
 

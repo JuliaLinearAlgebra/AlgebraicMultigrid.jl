@@ -7,13 +7,13 @@ struct Solver{S,T,P,PS}
     max_coarse::Int64
 end
 
-function ruge_stuben{Ti,Tv}(A::SparseMatrixCSC{Ti,Tv};
+function ruge_stuben(A::SparseMatrixCSC{Ti,Tv};
                 strength = Classical(0.25),
                 CF = RS(),
                 presmoother = GaussSeidel(),
                 postsmoother = GaussSeidel(),
                 max_levels = 10,
-                max_coarse = 10)
+                max_coarse = 10) where {Ti,Tv}
 
     s = Solver(strength, CF, presmoother,
                 postsmoother, max_levels, max_levels)
@@ -29,7 +29,7 @@ function ruge_stuben{Ti,Tv}(A::SparseMatrixCSC{Ti,Tv};
     MultiLevel(levels, A, presmoother, postsmoother)
 end
 
-function extend_heirarchy!{Ti,Tv}(levels::Vector{Level{Ti,Tv}}, strength, CF, A::SparseMatrixCSC{Ti,Tv})
+function extend_heirarchy!(levels::Vector{Level{Ti,Tv}}, strength, CF, A::SparseMatrixCSC{Ti,Tv}) where {Ti,Tv}
     S, T = strength_of_connection(strength, A)
     splitting = split_nodes(CF, S)
     P, R = direct_interpolation(A, T, splitting)
@@ -38,50 +38,43 @@ function extend_heirarchy!{Ti,Tv}(levels::Vector{Level{Ti,Tv}}, strength, CF, A:
 end
 
 function direct_interpolation(A, T, splitting)
-
-    fill!(T.nzval, eltype(A)(1.))
+    fill!(T.nzval, eltype(A)(1))
     T .= A .* T
-    Pp = rs_direct_interpolation_pass1(T, A, splitting)
-    Pp .= Pp .+ 1
-
+    Pp = rs_direct_interpolation_pass1(T, splitting)
     Px, Pj, Pp = rs_direct_interpolation_pass2(A, T, splitting, Pp)
 
-    Pj .= Pj .+ 1
-
     R = SparseMatrixCSC(maximum(Pj), size(A, 1), Pp, Pj, Px)
-    P = R'
+    P = copy(R')
 
     P, R
 end
 
-
-function rs_direct_interpolation_pass1(T, A, splitting)
-
-     Bp = zeros(Int, size(A.colptr))
-     n = size(A, 1)
-     nnz = 0
-     for i = 1:n
-         if splitting[i] == C_NODE
-             nnz += 1
-         else
-             for j in nzrange(T, i)
-                 row = T.rowval[j]
-                 if splitting[row] == C_NODE && row != i
-                     nnz += 1
+# calculates the number of nonzeros in each column of the interpolation matrix
+function rs_direct_interpolation_pass1(T, splitting)
+    n = size(T, 2)
+    Bp = ones(Int, n+1)
+    nnzplus1 = 1
+    for i = 1:n
+        if splitting[i] == C_NODE
+            nnzplus1 += 1
+        else
+            for j in nzrange(T, i)
+                row = T.rowval[j]
+                if splitting[row] == C_NODE && row != i
+                    nnzplus1 += 1
                 end
-             end
+            end
         end
-        Bp[i+1] = nnz
-     end
-     Bp
+        Bp[i+1] = nnzplus1
+    end
+    Bp
  end
 
 
- function rs_direct_interpolation_pass2(A::SparseMatrixCSC{Tv,Ti},
+function rs_direct_interpolation_pass2(A::SparseMatrixCSC{Tv,Ti},
                                                 T::SparseMatrixCSC{Tv, Ti},
                                                 splitting::Vector{Ti},
                                                 Bp::Vector{Ti}) where {Tv,Ti}
-
                                                 
     Bx = zeros(Tv, Bp[end] - 1)
     Bj = zeros(Ti, Bp[end] - 1)
@@ -157,7 +150,7 @@ function rs_direct_interpolation_pass1(T, A, splitting)
         m[i] = sum
         sum += splitting[i]
     end
-    Bj .= m[Bj]
+    Bj .= m[Bj] .+ 1
 
-   Bx, Bj, Bp
+    Bx, Bj, Bp
 end

@@ -97,7 +97,7 @@ function aggregation(::StandardAggregation, S::SparseMatrixCSC{T,R}) where {T,R}
     if minimum(x) == -1
         mask = x .!= -1
         I = collect(R, 1:n)[mask]
-        J = x[mask] + R(1)
+        J = x[mask] .+ R(1)
         #J = x[mask] + 1
         V = ones(eltype(S), length(J))
         AggOp = sparse(J,I,V,N,M)

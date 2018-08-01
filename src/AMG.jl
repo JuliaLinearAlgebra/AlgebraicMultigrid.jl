@@ -1,6 +1,8 @@
 module AMG
 
 import IterativeSolvers: gauss_seidel!
+using Compat, Compat.LinearAlgebra
+using Compat.SparseArrays, Compat.Printf
 using Base.Threads
 
 const MT = false
