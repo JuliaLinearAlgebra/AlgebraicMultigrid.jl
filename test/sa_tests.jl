@@ -13,11 +13,11 @@ function symmetric_soc(A::SparseMatrixCSC{T,V}, θ) where {T,V}
 
     S = sparse(i,j,v, size(A)...) + spdiagm(0=>D)
 
-    scale_cols_by_largest_entry!(S)
-
     for i = 1:size(S.nzval,1)
         S.nzval[i] = abs(S.nzval[i])
     end
+
+    scale_cols_by_largest_entry!(S)
 
     S
 end
@@ -222,7 +222,7 @@ function test_approximate_spectral_radius()
     for A in cases
         A = A + A'
         @static if VERSION < v"0.7-"
-            E,V = eig(A)            
+            E,V = eig(A)
         else
             E,V = (eigen(A)...,)
         end
@@ -231,15 +231,12 @@ function test_approximate_spectral_radius()
         expected_eig = E[largest_eig]
 
         @test isapprox(approximate_spectral_radius(A), expected_eig)
-
     end
-
 end
 
 # Test Gauss Seidel 
 import AlgebraicMultigrid: gs!, relax!
-function test_gauss_seidel()
-    
+function test_gauss_seidel()    
     N = 1
     A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
@@ -331,7 +328,5 @@ function test_symmetric_sweep()
     relax!(s, A, x, b)
     @test sum(abs2, x - [0.176765; 0.353529; 0.497517; 0.598914; 
                             0.653311; 0.659104; 0.615597; 0.52275; 
-                            0.382787; 0.203251]) < 1e-6
-        
+                            0.382787; 0.203251]) < 1e-6        
 end
-

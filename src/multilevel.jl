@@ -74,7 +74,7 @@ struct V <: Cycle
 end
 
 """
-    solve(ml::MultiLevel, b::Vector, cycle, kwargs...)
+    solve(ml::MultiLevel, b::AbstractVector, cycle, kwargs...)
 
 Execute multigrid cycling.
 
@@ -92,7 +92,7 @@ Keyword Arguments
 * log::Bool - return vector of residuals along with solution
 
 """
-function solve(ml::MultiLevel, b::Vector{T},
+function solve(ml::MultiLevel, b::AbstractVector{T},
                                     cycle::Cycle = V();
                                     maxiter::Int = 100,
                                     tol::Float64 = 1e-5,

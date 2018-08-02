@@ -22,28 +22,26 @@ function ruge_stuben(A::SparseMatrixCSC{Ti,Tv};
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
         A = extend_heirarchy!(levels, strength, CF, A)
-        #if size(A, 1) <= max_coarse
-        #    break
-        #end
     end
     MultiLevel(levels, A, presmoother, postsmoother)
 end
 
 function extend_heirarchy!(levels::Vector{Level{Ti,Tv}}, strength, CF, A::SparseMatrixCSC{Ti,Tv}) where {Ti,Tv}
-    S, T = strength_of_connection(strength, A)
+    At = copy(A')
+    S, T = strength_of_connection(strength, At)
     splitting = split_nodes(CF, S)
-    P, R = direct_interpolation(A, T, splitting)
+    P, R = direct_interpolation(At, T, splitting)
     push!(levels, Level(A, P, R))
     A = R * A * P
 end
 
-function direct_interpolation(A, T, splitting)
-    fill!(T.nzval, eltype(A)(1))
-    T .= A .* T
+function direct_interpolation(At, T, splitting)
+    fill!(T.nzval, eltype(At)(1))
+    T .= At .* T
+    
     Pp = rs_direct_interpolation_pass1(T, splitting)
-    Px, Pj, Pp = rs_direct_interpolation_pass2(A, T, splitting, Pp)
-
-    R = SparseMatrixCSC(maximum(Pj), size(A, 1), Pp, Pj, Px)
+    Px, Pj, Pp = rs_direct_interpolation_pass2(At, T, splitting, Pp)
+    R = SparseMatrixCSC(maximum(Pj), size(At, 1), Pp, Pj, Px)
     P = copy(R')
 
     P, R
@@ -60,7 +58,7 @@ function rs_direct_interpolation_pass1(T, splitting)
         else
             for j in nzrange(T, i)
                 row = T.rowval[j]
-                if splitting[row] == C_NODE && row != i
+                if splitting[row] == C_NODE
                     nnzplus1 += 1
                 end
             end
@@ -71,7 +69,7 @@ function rs_direct_interpolation_pass1(T, splitting)
  end
 
 
-function rs_direct_interpolation_pass2(A::SparseMatrixCSC{Tv,Ti},
+function rs_direct_interpolation_pass2(At::SparseMatrixCSC{Tv,Ti},
                                                 T::SparseMatrixCSC{Tv, Ti},
                                                 splitting::Vector{Ti},
                                                 Bp::Vector{Ti}) where {Tv,Ti}
@@ -79,7 +77,7 @@ function rs_direct_interpolation_pass2(A::SparseMatrixCSC{Tv,Ti},
     Bx = zeros(Tv, Bp[end] - 1)
     Bj = zeros(Ti, Bp[end] - 1)
 
-    n = size(A, 1)
+    n = size(At, 1)
 
     for i = 1:n
         if splitting[i] == C_NODE
@@ -91,7 +89,7 @@ function rs_direct_interpolation_pass2(A::SparseMatrixCSC{Tv,Ti},
             for j in nzrange(T, i)
                 row = T.rowval[j]
                 sval = T.nzval[j]
-                if splitting[row] == C_NODE && row != i
+                if splitting[row] == C_NODE
                     if sval < 0
                         sum_strong_neg += sval
                     else
@@ -102,9 +100,9 @@ function rs_direct_interpolation_pass2(A::SparseMatrixCSC{Tv,Ti},
             sum_all_pos = zero(Tv)
             sum_all_neg = zero(Tv)
             diag = zero(Tv)
-            for j in nzrange(A, i)
-                row = A.rowval[j]
-                aval = A.nzval[j]
+            for j in nzrange(At, i)
+                row = At.rowval[j]
+                aval = At.nzval[j]
                 if row == i
                     diag += aval
                 else
@@ -115,28 +113,43 @@ function rs_direct_interpolation_pass2(A::SparseMatrixCSC{Tv,Ti},
                     end
                 end
             end
-            alpha = sum_all_neg / sum_strong_neg
-            beta = sum_all_pos / sum_strong_pos
 
             if sum_strong_pos == 0
-                diag += sum_all_pos
-                beta = zero(beta)
+                beta = zero(diag)
+                if diag >= 0
+                    diag += sum_all_pos
+                end
+            else
+                beta = sum_all_pos / sum_strong_pos
             end
 
-            neg_coeff = -1 * alpha / diag
-            pos_coeff = -1 * beta / diag
+            if sum_strong_neg == 0
+                alpha = zero(diag)
+                if diag < 0
+                    diag += sum_all_neg
+                end
+            else
+                alpha = sum_all_neg / sum_strong_neg
+            end
+
+            if isapprox(diag, 0, atol=eps(Tv))
+                neg_coeff = Tv(0)
+                pos_coeff = Tv(0)
+            else
+                neg_coeff = alpha / diag
+                pos_coeff = beta / diag
+            end
 
             nnz = Bp[i]
-
             for j in nzrange(T, i)
                 row = T.rowval[j]
                 sval = T.nzval[j]
-                if splitting[row] == C_NODE && row != i
+                if splitting[row] == C_NODE
                     Bj[nnz] = row
                     if sval < 0
-                        Bx[nnz] = neg_coeff * sval
+                        Bx[nnz] = abs(neg_coeff * sval)
                     else
-                        Bx[nnz] = pos_coeff * sval
+                        Bx[nnz] = abs(pos_coeff * sval)
                     end
                     nnz += 1
                 end

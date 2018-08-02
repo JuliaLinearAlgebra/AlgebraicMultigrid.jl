@@ -5,12 +5,12 @@ end
 Classical(;θ = 0.25) = Classical(θ)
 
 function strength_of_connection(c::Classical, 
-                A::SparseMatrixCSC{Tv,Ti}) where {Ti,Tv}
+                At::SparseMatrixCSC{Tv,Ti}) where {Ti,Tv}
 
     θ = c.θ
 
-    m, n = size(A)
-    T = copy(A')
+    m, n = size(At)
+    T = deepcopy(At)
 
     for i = 1:n
         _m = find_max_off_diag(T, i)
@@ -29,7 +29,7 @@ function strength_of_connection(c::Classical,
 
         end
     end
-
+    
     dropzeros!(T)
 
     scale_cols_by_largest_entry!(T)
