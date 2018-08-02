@@ -1,4 +1,4 @@
-import AMG: scale_cols_by_largest_entry!, strength_of_connection, 
+import AlgebraicMultigrid: scale_cols_by_largest_entry!, strength_of_connection, 
             SymmetricStrength, poisson
 function symmetric_soc(A::SparseMatrixCSC{T,V}, θ) where {T,V}
     D = abs.(diag(A))
@@ -237,7 +237,7 @@ function test_approximate_spectral_radius()
 end
 
 # Test Gauss Seidel 
-import AMG: gs!, relax!
+import AlgebraicMultigrid: gs!, relax!
 function test_gauss_seidel()
     
     N = 1
@@ -322,7 +322,7 @@ function nodes_not_agg()
 end
 
 # Issue 26
-import AMG: relax!
+import AlgebraicMultigrid: relax!
 function test_symmetric_sweep()
     A = poisson(10)
     s = GaussSeidel(SymmetricSweep(), 4)

@@ -1,4 +1,4 @@
-import AMG: Level, MultiLevel, GaussSeidel
+import AlgebraicMultigrid: Level, MultiLevel, GaussSeidel
 
 function multigrid(A::SparseMatrixCSC{T,V}; max_levels = 10, max_coarse = 10,
                     presmoother = GaussSeidel(), postsmoother = GaussSeidel()) where {T,V}

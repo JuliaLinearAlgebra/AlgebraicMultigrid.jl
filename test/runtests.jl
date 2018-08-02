@@ -1,11 +1,11 @@
 using Compat, Compat.Test, Compat.LinearAlgebra
 using Compat.SparseArrays, Compat.DelimitedFiles, Compat.Random
-using IterativeSolvers, JLD, AMG
-import AMG: V, coarse_solver, Pinv, Classical
+using IterativeSolvers, JLD, AlgebraicMultigrid
+import AlgebraicMultigrid: V, coarse_solver, Pinv, Classical
 
 include("sa_tests.jl")
 
-@testset "AMG Tests" begin
+@testset "AlgebraicMultigrid Tests" begin
 
 graph = load("test.jld")["G"]
 ref_S = load("ref_S_test.jld")["G"]
@@ -38,7 +38,7 @@ S = sprand(10,10,0.1); S = S + S'
 @test split_nodes(RS(), S) ==  [0, 1, 1, 0, 0, 0, 0, 0, 1, 1]
 
 a = load("thing.jld")["G"]
-S, T = AMG.strength_of_connection(Classical(0.25), a)
+S, T = AlgebraicMultigrid.strength_of_connection(Classical(0.25), a)
 @test split_nodes(RS(), S) == [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0,
 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0,
 1, 0]
@@ -50,11 +50,11 @@ end
 @testset "Interpolation" begin
 
 # Direct Interpolation
-using AMG
+using AlgebraicMultigrid
 A = poisson(5)
 A = Float64.(A)
 splitting = [1,0,1,0,1]
-P, R = AMG.direct_interpolation(A, copy(A), splitting)
+P, R = AlgebraicMultigrid.direct_interpolation(A, copy(A), splitting)
 @test P ==  [ 1.0  0.0  0.0
               0.5  0.5  0.0
               0.0  1.0  0.0
@@ -74,7 +74,7 @@ end
 @testset "Multilevel" begin
 A = poisson(1000)
 A = float.(A) #FIXME
-ml = AMG.ruge_stuben(A)
+ml = AlgebraicMultigrid.ruge_stuben(A)
 @test length(ml) == 8
 s = [1000, 500, 250, 125, 62, 31, 15]
 n = [2998, 1498, 748, 373, 184, 91, 43]
@@ -97,11 +97,11 @@ end
 @test size(ml.final_A, 1) == 2
 @test nnz(ml.final_A) == 4
 @static if VERSION < v"0.7-"
-    @test round(AMG.operator_complexity(ml), 3) ≈ 1.142
-    @test round(AMG.grid_complexity(ml), 3) ≈ 1.190
+    @test round(AlgebraicMultigrid.operator_complexity(ml), 3) ≈ 1.142
+    @test round(AlgebraicMultigrid.grid_complexity(ml), 3) ≈ 1.190
 else
-    @test round(AMG.operator_complexity(ml), digits=3) ≈ 1.142
-    @test round(AMG.grid_complexity(ml), digits=3) ≈ 1.190
+    @test round(AlgebraicMultigrid.operator_complexity(ml), digits=3) ≈ 1.142
+    @test round(AlgebraicMultigrid.grid_complexity(ml), digits=3) ≈ 1.190
 end
 
 include("gmg.jl")
@@ -287,15 +287,15 @@ for sz in [10, 5, 2]
     ml = ruge_stuben(a)
     @test isempty(ml.levels)
     @test size(ml.final_A) == (sz,sz)
-    @test AMG.operator_complexity(ml) == 1
-    @test AMG.grid_complexity(ml) == 1
+    @test AlgebraicMultigrid.operator_complexity(ml) == 1
+    @test AlgebraicMultigrid.grid_complexity(ml) == 1
 
     a = poisson(sz)
     ml = smoothed_aggregation(a)
     @test isempty(ml.levels)
     @test size(ml.final_A) == (sz,sz)
-    @test AMG.operator_complexity(ml) == 1
-    @test AMG.grid_complexity(ml) == 1
+    @test AlgebraicMultigrid.operator_complexity(ml) == 1
+    @test AlgebraicMultigrid.grid_complexity(ml) == 1
 end
 
 end

@@ -1,4 +1,4 @@
-module AMG
+module AlgebraicMultigrid
 
 import IterativeSolvers: gauss_seidel!
 using Compat, Compat.LinearAlgebra
@@ -8,6 +8,7 @@ using Base.Threads
 using Compat: rmul!
 
 const MT = false
+const AMG = AlgebraicMultigrid
 
 include("utils.jl")
 export approximate_spectral_radius
