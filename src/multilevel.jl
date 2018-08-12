@@ -26,6 +26,9 @@ function MultiLevelWorkspace(::Type{Val{bs}}, ::Type{T}) where {bs, T<:Number}
     end
     MultiLevelWorkspace{TX, bs}(TX[], TX[], TX[])
 end
+Base.eltype(w::MultiLevelWorkspace{TX}) where TX = eltype(TX)
+blocksize(w::MultiLevelWorkspace{TX, bs}) where {TX, bs} = bs
+
 function residual!(m::MultiLevelWorkspace{TX, bs}, n) where {TX, bs}
     if bs === 1
         push!(m.res_vecs, TX(undef, n))
@@ -129,16 +132,22 @@ Keyword Arguments
 * log::Bool - return vector of residuals along with solution
 
 """
-function solve(ml::MultiLevel, b::AbstractVector{T},
+function solve(ml::MultiLevel, b::AbstractVector, args...; kwargs...)
+    n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1) 
+    V = promote_type(eltype(ml.workspace), eltype(b))
+    bs = blocksize(ml.workspace)
+    x = bs === 1 ? zeros(V, n) : zeros(V, n, bs)
+    return solve!(x, ml, b, args...; kwargs...)
+end
+function solve!(x, ml::MultiLevel, b::AbstractVector{T},
                                     cycle::Cycle = V();
                                     maxiter::Int = 100,
                                     tol::Float64 = 1e-5,
                                     verbose::Bool = false,
                                     log::Bool = false) where {T}
                                         
-    A = length(ml) == 1 ? ml.final_A : ml.levels[1].A                                   
+    A = length(ml) == 1 ? ml.final_A : ml.levels[1].A
     V = promote_type(eltype(A), eltype(b))
-    x = zeros(V, size(b))
     tol = eltype(b)(tol)
     log && (residuals = Vector{V}())
     normres = normb = norm(b)
