@@ -15,5 +15,5 @@ else
     mul!(b, p::Preconditioner, x) = mul!(b, p.ml.levels[1].A, x)
 end
 
-\(p::Preconditioner, b) = solve(p.ml, b, maxiter = 1, tol = 1e-12)
+\(p::Preconditioner, b) = solve(p.ml, b, maxiter = 1, calculate_residual = false)
 *(p::Preconditioner, b) = p.ml.levels[1].A * x

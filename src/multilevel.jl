@@ -144,8 +144,9 @@ function solve!(x, ml::MultiLevel, b::AbstractVector{T},
                                     maxiter::Int = 100,
                                     tol::Float64 = 1e-5,
                                     verbose::Bool = false,
-                                    log::Bool = false) where {T}
-                                        
+                                    log::Bool = false,
+                                    calculate_residual = true) where {T}
+
     A = length(ml) == 1 ? ml.final_A : ml.levels[1].A
     V = promote_type(eltype(A), eltype(b))
     tol = eltype(b)(tol)
@@ -156,15 +157,20 @@ function solve!(x, ml::MultiLevel, b::AbstractVector{T},
     end
     log && push!(residuals, normb)
 
+    res = ml.workspace.res_vecs[1]
     itr = lvl = 1
-    while itr <= maxiter && normres > tol
+    while itr <= maxiter && (!calculate_residual || normres > tol)
         if length(ml) == 1
             ml.coarse_solver(x, b)
         else
             __solve!(x, ml, cycle, b, lvl)
         end
-        normres = norm(b - A * x)
-        log && push!(residuals, normres)
+        if calculate_residual
+            mul!(res, A, x)
+            res .= b .- res
+            normres = norm(res)
+            log && push!(residuals, normres)
+        end
         itr += 1
     end
 
@@ -176,7 +182,10 @@ function __solve!(x, ml, v::V, b, lvl)
     A = ml.levels[lvl].A
     ml.presmoother(A, x, b)
 
-    res = b - A * x
+    res = ml.workspace.res_vecs[lvl]
+    mul!(res, A, x)
+    res .= b .- res
+
     coarse_b = ml.levels[lvl].R * res
     coarse_x = zeros(eltype(coarse_b), size(coarse_b))
 
