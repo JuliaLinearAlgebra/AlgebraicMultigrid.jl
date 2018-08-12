@@ -4,12 +4,48 @@ struct Level{T,V}
     R::SparseMatrixCSC{T,V}
 end
 
-struct MultiLevel{S, Pre, Post, Ti, Tv}
+struct MultiLevel{S, Pre, Post, Ti, Tv, TW}
     levels::Vector{Level{Ti,Tv}}
     final_A::SparseMatrixCSC{Ti,Tv}
     coarse_solver::S
     presmoother::Pre
     postsmoother::Post
+    workspace::TW
+end
+
+struct MultiLevelWorkspace{TX, bs}
+    coarse_xs::Vector{TX}
+    coarse_bs::Vector{TX}
+    res_vecs::Vector{TX}
+end
+function MultiLevelWorkspace(::Type{Val{bs}}, ::Type{T}) where {bs, T<:Number}
+    if bs === 1
+        TX = Vector{T}
+    else
+        TX = Matrix{T}
+    end
+    MultiLevelWorkspace{TX, bs}(TX[], TX[], TX[])
+end
+function residual!(m::MultiLevelWorkspace{TX, bs}, n) where {TX, bs}
+    if bs === 1
+        push!(m.res_vecs, TX(undef, n))
+    else
+        push!(m.res_vecs, TX(undef, n, bs))
+    end
+end
+function coarse_x!(m::MultiLevelWorkspace{TX, bs}, n) where {TX, bs}
+    if bs === 1
+        push!(m.coarse_xs, TX(undef, n))
+    else
+        push!(m.coarse_xs, TX(undef, n, bs))
+    end
+end
+function coarse_b!(m::MultiLevelWorkspace{TX, bs}, n) where {TX, bs}
+    if bs === 1
+        push!(m.coarse_bs, TX(undef, n))
+    else
+        push!(m.coarse_bs, TX(undef, n, bs))
+    end
 end
 
 abstract type CoarseSolver end
@@ -19,8 +55,6 @@ struct Pinv{T} <: CoarseSolver
 end
 (p::Pinv)(x, b) = mul!(x, p.pinvA, b)
 
-MultiLevel(l::Vector{Level{Ti,Tv}}, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother) where {Ti,Tv} =
-    MultiLevel(l, A, Pinv(A), presmoother, postsmoother)
 Base.length(ml) = length(ml.levels) + 1
 
 function Base.show(io::IO, ml::MultiLevel)

@@ -7,23 +7,29 @@ struct Solver{S,T,P,PS}
     max_coarse::Int64
 end
 
-function ruge_stuben(A::SparseMatrixCSC{Ti,Tv};
+function ruge_stuben(A::SparseMatrixCSC{Ti,Tv}, ::Type{Val{bs}}=Val{1};
                 strength = Classical(0.25),
                 CF = RS(),
                 presmoother = GaussSeidel(),
                 postsmoother = GaussSeidel(),
                 max_levels = 10,
-                max_coarse = 10) where {Ti,Tv}
+                max_coarse = 10,
+                coarse_solver = Pinv) where {Ti,Tv,bs}
 
     s = Solver(strength, CF, presmoother,
                 postsmoother, max_levels, max_levels)
 
     levels = Vector{Level{Ti,Tv}}()
+    w = MultiLevelWorkspace(Val{bs}, eltype(A))
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
+        residual!(w, size(A, 1))
         A = extend_heirarchy!(levels, strength, CF, A)
+        coarse_x!(w, size(A, 1))
+        coarse_b!(w, size(A, 1))
     end
-    MultiLevel(levels, A, presmoother, postsmoother)
+
+    MultiLevel(levels, A, coarse_solver(A), presmoother, postsmoother, w)
 end
 
 function extend_heirarchy!(levels::Vector{Level{Ti,Tv}}, strength, CF, A::SparseMatrixCSC{Ti,Tv}) where {Ti,Tv}
