@@ -106,29 +106,27 @@ function solve(ml::MultiLevel, b::AbstractVector{T},
     V = promote_type(eltype(A), eltype(b))
     x = zeros(V, size(b))
     tol = eltype(b)(tol)
-    residuals = Vector{V}()
-    normb = norm(b)
+    log && (residuals = Vector{V}())
+    normres = normb = norm(b)
     if normb != 0
         tol *= normb
     end
-    push!(residuals, normb)
+    log && push!(residuals, normb)
 
-    lvl = 1
-    while length(residuals) <= maxiter && residuals[end] > tol
+    itr = lvl = 1
+    while itr <= maxiter && normres > tol
         if length(ml) == 1
             ml.coarse_solver(x, b)
         else
             __solve!(x, ml, cycle, b, lvl)
         end
-        push!(residuals, T(norm(b - A * x)))
+        normres = norm(b - A * x)
+        log && push!(residuals, normres)
+        itr += 1
     end
 
     # @show residuals
-    if log
-        return x, residuals
-    else
-        return x
-    end
+    log ? (x, residuals) : x
 end
 function __solve!(x, ml, v::V, b, lvl)
 
