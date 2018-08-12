@@ -137,7 +137,6 @@ Keyword Arguments
 function solve(ml::MultiLevel, b::AbstractArray, args...; kwargs...)
     n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1) 
     V = promote_type(eltype(ml.workspace), eltype(b))
-    ndims(b) == blocksize(ml.workspace) && throw("Dimension of MultiLevel workspace and dimension of vector b must be equal.")
     x = zeros(V, size(b))
     return solve!(x, ml, b, args...; kwargs...)
 end
