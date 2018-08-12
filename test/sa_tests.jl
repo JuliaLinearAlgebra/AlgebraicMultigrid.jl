@@ -306,13 +306,13 @@ function test_jacobi_prolongator()
     A = poisson(100)
     T = poisson(100)
     x = JacobiProlongation(4/3)(A, T, 1, 1)
-    ref = load("ref_R.jld2")["G"]
+    ref = include("ref_R.jl")
     @test sum(abs2, x - ref) < 1e-6
 end
 
 # Issue #24
 function nodes_not_agg()
-    A = load("onetoall.jld2")["G"]
+    A = include("onetoall.jl")
     ml = smoothed_aggregation(A)
     @test size(ml.levels[2].A) == (11,11)
     @test size(ml.final_A) == (2,2)

@@ -7,8 +7,8 @@ include("sa_tests.jl")
 
 @testset "AlgebraicMultigrid Tests" begin
 
-graph = load("test.jld2")["G"]
-ref_S = load("ref_S_test.jld2")["G"]
+graph = include("test.jl")
+ref_S = include("ref_S_test.jl")
 ref_split = readdlm("ref_split_test.txt")
 
 @testset "Strength of connection" begin
@@ -37,7 +37,7 @@ srand(0)
 S = sprand(10,10,0.1); S = S + S'
 @test RS()(S) ==  [0, 1, 1, 0, 0, 0, 0, 0, 1, 1]
 
-a = load("thing.jld2")["G"]
+a = include("thing.jl")
 S, T = Classical(0.25)(a)
 @test RS()(S) == [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0,
 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0,
@@ -60,7 +60,7 @@ P, R = AlgebraicMultigrid.direct_interpolation(A, copy(A), splitting)
               0.0  1.0  0.0
               0.0  0.5  0.5
               0.0  0.0  1.0 ]
-A = load("thing.jld2")["G"]
+A = include("thing.jl")
 ml = ruge_stuben(A)
 @test size(ml.levels[2].A, 1) == 19
 end
@@ -85,7 +85,7 @@ end
 @test size(ml.final_A, 1) == 7
 @test nnz(ml.final_A) == 19
 
-A = load("randlap.jld2")["G"]
+A = include("randlap.jl")
 ml = ruge_stuben(A)
 @test length(ml) == 3
 s = [100, 17]
@@ -127,7 +127,7 @@ x = solve(ml, A * ones(1000))
 @test sum(abs2, x - ones(1000)) < 1e-8
 
 
-A = load("randlap.jld2")["G"]
+A = include("randlap.jl")
 
 ml = ruge_stuben(A, presmoother = fsmoother,
                     postsmoother = fsmoother)
@@ -141,7 +141,7 @@ x = solve(ml, A * ones(100))
 end
 
 @testset "Preconditioning" begin
-A = load("thing.jld2")["G"]
+A = include("thing.jl")
 n = size(A, 1)
 smoother = GaussSeidel(ForwardSweep())
 ml = ruge_stuben(A, presmoother = smoother,
