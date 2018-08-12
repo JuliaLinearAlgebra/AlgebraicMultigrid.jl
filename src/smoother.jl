@@ -10,7 +10,7 @@ struct GaussSeidel{S} <: Smoother
     sweep::S
     iter::Int
 end
-GaussSeidel(iter = 1) = GaussSeidel(SymmetricSweep(), iter)
+GaussSeidel(; iter = 1) = GaussSeidel(SymmetricSweep(), iter)
 GaussSeidel(f::ForwardSweep) = GaussSeidel(f, 1)
 GaussSeidel(b::BackwardSweep) = GaussSeidel(b, 1)
 GaussSeidel(s::SymmetricSweep) = GaussSeidel(s, 1)
@@ -47,9 +47,10 @@ end
 struct Jacobi{T,TX} <: Smoother
     ω::T
     temp::TX
+    iter::Int
 end
-Jacobi(ω, x::TX) where {T, TX<:AbstractVector{T}} = Jacobi{T,TX}(ω, similar(x))
-Jacobi(x::TX, ω = 0.5) where {T, TX<:AbstractVector{T}} = Jacobi{T,TX}(ω, similar(x))
+Jacobi(ω, x::TX; iter=1) where {T, TX<:AbstractArray{T}} = Jacobi{T,TX}(ω, similar(x), iter)
+Jacobi(x::TX, ω=0.5; iter=1) where {T, TX<:AbstractArray{T}} = Jacobi{T,TX}(ω, similar(x), iter)
 
 function (jacobi::Jacobi)(A, x, b)
 
@@ -57,25 +58,27 @@ function (jacobi::Jacobi)(A, x, b)
     one = Base.one(eltype(A))
     temp = jacobi.temp
 
-    @inbounds for col = 1:size(x, 2)
-        for i = 1:size(A, 1)
-            temp[i, col] = x[i, col]
-        end
-
-        for i = 1:size(A, 1)
-            rsum = zero(eltype(A))
-            diag = zero(eltype(A))
-
-            for j in nzrange(A, i)
-                row = A.rowval[j]
-                val = A.nzval[j]
-
-                diag = ifelse(row == i, val, diag)
-                rsum += ifelse(row == i, 0, val * temp[row, col])
+    for i in 1:jacobi.iter
+        @inbounds for col = 1:size(x, 2)
+            for i = 1:size(A, 1)
+                temp[i, col] = x[i, col]
             end
 
-            xcand = (one - ω) * temp[i, col] + ω * ((b[i, col] - rsum) / diag)
-            x[i, col] = ifelse(diag == 0, x[i, col], xcand)
+            for i = 1:size(A, 1)
+                rsum = zero(eltype(A))
+                diag = zero(eltype(A))
+
+                for j in nzrange(A, i)
+                    row = A.rowval[j]
+                    val = A.nzval[j]
+
+                    diag = ifelse(row == i, val, diag)
+                    rsum += ifelse(row == i, 0, val * temp[row, col])
+                end
+
+                xcand = (one - ω) * temp[i, col] + ω * ((b[i, col] - rsum) / diag)
+                x[i, col] = ifelse(diag == 0, x[i, col], xcand)
+            end
         end
     end
 end
@@ -87,8 +90,8 @@ struct ParallelJacobi{T,TX} <: Smoother
     ω::T
     temp::TX
 end
-ParallelJacobi(ω, x::TX) where {T, TX<:AbstractVector{T}} = ParallelJacobi{T,TX}(ω, similar(x))
-ParallelJacobi(x::TX, ω = 0.5) where {T, TX<:AbstractVector{T}} = ParallelJacobi{T,TX}(ω, similar(x))
+ParallelJacobi(ω, x::TX) where {T, TX<:AbstractArray{T}} = ParallelJacobi{T,TX}(ω, similar(x))
+ParallelJacobi(x::TX, ω = 0.5) where {T, TX<:AbstractArray{T}} = ParallelJacobi{T,TX}(ω, similar(x))
 
 struct ParallelTemp{TX, TI}
     temp::TX

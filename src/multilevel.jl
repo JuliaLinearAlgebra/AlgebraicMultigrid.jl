@@ -116,7 +116,7 @@ struct V <: Cycle
 end
 
 """
-    solve(ml::MultiLevel, b::AbstractVector, cycle, kwargs...)
+    solve(ml::MultiLevel, b::AbstractArray, cycle, kwargs...)
 
 Execute multigrid cycling.
 
@@ -134,14 +134,14 @@ Keyword Arguments
 * log::Bool - return vector of residuals along with solution
 
 """
-function solve(ml::MultiLevel, b::AbstractVector, args...; kwargs...)
+function solve(ml::MultiLevel, b::AbstractArray, args...; kwargs...)
     n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1) 
     V = promote_type(eltype(ml.workspace), eltype(b))
-    bs = blocksize(ml.workspace)
-    x = bs === 1 ? zeros(V, n) : zeros(V, n, bs)
+    ndims(b) == blocksize(ml.workspace) && throw("Dimension of MultiLevel workspace and dimension of vector b must be equal.")
+    x = zeros(V, size(b))
     return solve!(x, ml, b, args...; kwargs...)
 end
-function solve!(x, ml::MultiLevel, b::AbstractVector{T},
+function solve!(x, ml::MultiLevel, b::AbstractArray{T},
                                     cycle::Cycle = V();
                                     maxiter::Int = 100,
                                     tol::Float64 = 1e-5,
@@ -169,7 +169,7 @@ function solve!(x, ml::MultiLevel, b::AbstractVector{T},
         end
         if calculate_residual
             mul!(res, A, x)
-            res .= b .- res
+            reshape(res, size(b)) .= b .- reshape(res, size(b))
             normres = norm(res)
             log && push!(residuals, normres)
         end
@@ -186,7 +186,7 @@ function __solve!(x, ml, v::V, b, lvl)
 
     res = ml.workspace.res_vecs[lvl]
     mul!(res, A, x)
-    res .= b .- res
+    reshape(res, size(b)) .= b .- reshape(res, size(b))
 
     coarse_b = ml.workspace.coarse_bs[lvl]
     mul!(coarse_b, ml.levels[lvl].R, res)
