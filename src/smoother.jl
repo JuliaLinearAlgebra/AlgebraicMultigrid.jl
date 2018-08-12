@@ -29,21 +29,17 @@ end
 function gs!(A, b, x, start, step, stop)
     n = size(A, 1)
     z = zero(eltype(A))
-    for i = start:step:stop
-        rsum = z
-        d = z
-        for j in nzrange(A, i)
-            row = A.rowval[j]
-            val = A.nzval[j]
-            if i == row
-                d = val
-            else
-                rsum += val * x[row]
+    @inbounds for col = 1:size(x, 2)
+        for i = start:step:stop
+            rsum = z
+            d = z
+            for j in nzrange(A, i)
+                row = A.rowval[j]
+                val = A.nzval[j]
+                d = ifelse(i == row, val, d)
+                rsum += ifelse(i == row, 0, val * x[row, col])
             end
-        end
-
-        if d != 0
-            x[i] = (b[i] - rsum) / d
+            x[i, col] = ifelse(d == 0, x[i, col], (b[i, col] - rsum) / d)
         end
     end
 end
@@ -52,19 +48,21 @@ struct Jacobi{T,TX} <: Smoother
     ω::T
     temp::TX
 end
-Jacobi(ω=0.5, x) = Jacobi{T,TX}(ω, similar(x))
+Jacobi(ω, x::TX) where {T, TX<:AbstractVector{T}} = Jacobi{T,TX}(ω, similar(x))
+Jacobi(x::TX, ω = 0.5) where {T, TX<:AbstractVector{T}} = Jacobi{T,TX}(ω, similar(x))
 
-function (jacobi::Jacobi)(A, x, b, ω, start, step, stop)
+function (jacobi::Jacobi)(A, x, b)
 
-    one = one(eltype(A))
+    ω = jacobi.ω
+    one = Base.one(eltype(A))
     temp = jacobi.temp
 
-    @inbounds for col in 1:size(x, 2)
-        for i = start:step:stop
+    @inbounds for col = 1:size(x, 2)
+        for i = 1:size(A, 1)
             temp[i, col] = x[i, col]
         end
 
-        for i = start:step:stop
+        for i = 1:size(A, 1)
             rsum = zero(eltype(A))
             diag = zero(eltype(A))
 
@@ -72,19 +70,74 @@ function (jacobi::Jacobi)(A, x, b, ω, start, step, stop)
                 row = A.rowval[j]
                 val = A.nzval[j]
 
-                if row == i
-                    diag = val
-                else
-                    rsum += val * temp[row, col]
-                end
+                diag = ifelse(row == i, val, diag)
+                rsum += ifelse(row == i, 0, val * temp[row, col])
             end
 
-            if diag != 0
-                x[i, col] = (one - ω) * temp[i, col] + ω * ((b[i, col] - rsum) / diag)
-            end
+            xcand = (one - ω) * temp[i, col] + ω * ((b[i, col] - rsum) / diag)
+            x[i, col] = ifelse(diag == 0, x[i, col], xcand)
         end
     end
 end
+
+#=
+using KissThreading: tmap!
+
+struct ParallelJacobi{T,TX} <: Smoother
+    ω::T
+    temp::TX
+end
+ParallelJacobi(ω, x::TX) where {T, TX<:AbstractVector{T}} = ParallelJacobi{T,TX}(ω, similar(x))
+ParallelJacobi(x::TX, ω = 0.5) where {T, TX<:AbstractVector{T}} = ParallelJacobi{T,TX}(ω, similar(x))
+
+struct ParallelTemp{TX, TI}
+    temp::TX
+    col::TI
+end
+(ptemp::ParallelTemp)(i) = ptemp.temp[i, ptemp.col]
+
+struct ParallelJacobiMapper{TA, TX, TB, TTemp, TF, TI}
+    A::TA
+    x::TX
+    b::TB
+    temp::TTemp
+    ω::TF
+    col::TI
+end
+function (pjacobmapper::ParallelJacobiMapper)(i)
+    A = pjacobmapper.A
+    x = pjacobmapper.x
+    b = pjacobmapper.b
+    temp = pjacobmapper.temp
+    ω = pjacobmapper.ω
+    col = pjacobmapper.col
+
+    one = Base.one(eltype(A))
+    rsum = zero(eltype(A))
+    diag = zero(eltype(A))
+
+    for j in nzrange(A, i)
+        row = A.rowval[j]
+        val = A.nzval[j]
+
+        diag = ifelse(row == i, val, diag)
+        rsum += ifelse(row == i, 0, val * temp[row, col])
+    end
+    xcand = (one - ω) * temp[i, col] + ω * ((b[i, col] - rsum) / diag)
+    
+    return ifelse(diag == 0, x[i, col], xcand)
+end
+
+function (jacobi::ParallelJacobi)(A, x, b)
+    ω = jacobi.ω
+    temp = jacobi.temp
+    for col = 1:size(x, 2)
+        @views tmap!(ParallelTemp(temp, col), x[1:size(A, 1), col], 1:size(A, 1))
+        @views tmap!(ParallelJacobiMapper(A, x, b, temp, ω, col), 
+            x[1:size(A, 1), col], 1:size(A, 1))
+    end
+end
+=#
 
 struct JacobiProlongation{T}
     ω::T
