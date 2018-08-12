@@ -48,36 +48,40 @@ function gs!(A, b, x, start, step, stop)
     end
 end
 
-struct Jacobi{T} <: Smoother
+struct Jacobi{T,TX} <: Smoother
     ω::T
+    temp::TX
 end
+Jacobi(ω=0.5, x) = Jacobi{T,TX}(ω, similar(x))
 
-function jacobi!(A, x, b, ω, start, step, stop)
+function (jacobi::Jacobi)(A, x, b, ω, start, step, stop)
 
     one = one(eltype(A))
-    temp = similar(x)
+    temp = jacobi.temp
 
-    for i = start:step:stop
-        temp[i] = x[i]
-    end
-
-    for i = start:step:stop
-        rsum = zero(eltype(A))
-        diag = zero(eltype(A))
-
-        for j in nzrange(A, i)
-            row = A.nzval[j]
-            val = A.nzval[j]
-
-            if row == i
-                diag = val
-            else
-                rsum += val * temp[row]
-            end
+    @inbounds for col in 1:size(x, 2)
+        for i = start:step:stop
+            temp[i, col] = x[i, col]
         end
 
-        if diag != 0
-            x[i] = (one - ω) * temp[i] + ω * ((b[i] - rsum) / diag)
+        for i = start:step:stop
+            rsum = zero(eltype(A))
+            diag = zero(eltype(A))
+
+            for j in nzrange(A, i)
+                row = A.rowval[j]
+                val = A.nzval[j]
+
+                if row == i
+                    diag = val
+                else
+                    rsum += val * temp[row, col]
+                end
+            end
+
+            if diag != 0
+                x[i, col] = (one - ω) * temp[i, col] + ω * ((b[i, col] - rsum) / diag)
+            end
         end
     end
 end
