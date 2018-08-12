@@ -1,6 +1,6 @@
 using Compat, Compat.Test, Compat.LinearAlgebra
 using Compat.SparseArrays, Compat.DelimitedFiles, Compat.Random
-using IterativeSolvers, FileIO, AlgebraicMultigrid
+using IterativeSolvers, AlgebraicMultigrid
 import AlgebraicMultigrid: Pinv, Classical
 
 if VERSION < v"0.7-"
