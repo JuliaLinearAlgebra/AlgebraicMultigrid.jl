@@ -42,7 +42,7 @@ function generate_matrices()
     cases = []
 
     # Random matrices
-    srand(0)
+    seed!(0)
     for T in (Float32, Float64)
         
         for s in [2, 3, 5]
@@ -189,7 +189,7 @@ end
 function test_approximate_spectral_radius()
 
     cases = []
-    srand(0)
+    seed!(0)
 
     push!(cases, [2. 0.
                   0. 1.])

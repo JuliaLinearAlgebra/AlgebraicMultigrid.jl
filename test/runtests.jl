@@ -3,6 +3,12 @@ using Compat.SparseArrays, Compat.DelimitedFiles, Compat.Random
 using IterativeSolvers, FileIO, AlgebraicMultigrid
 import AlgebraicMultigrid: Pinv, Classical
 
+if VERSION < v"0.7-"
+    const seed! = srand
+else
+    using Random: seed!
+end
+
 include("sa_tests.jl")
 
 @testset "AlgebraicMultigrid Tests" begin
@@ -33,7 +39,7 @@ end
 # Ruge-Stuben splitting
 S = poisson(7)
 @test RS()(S) == [0, 1, 0, 1, 0, 1, 0]
-srand(0)
+seed!(0)
 S = sprand(10,10,0.1); S = S + S'
 @test RS()(S) ==  [0, 1, 1, 0, 0, 0, 0, 0, 1, 1]
 
