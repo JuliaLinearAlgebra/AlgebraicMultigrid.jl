@@ -1,4 +1,4 @@
-import AlgebraicMultigrid: scale_cols_by_largest_entry!, strength_of_connection, 
+import AlgebraicMultigrid: scale_cols_by_largest_entry!, 
             SymmetricStrength, poisson
 function symmetric_soc(A::SparseMatrixCSC{T,V}, θ) where {T,V}
     D = abs.(diag(A))
@@ -30,7 +30,7 @@ function test_symmetric_soc()
     for matrix in cases
         for θ in (0.0, 0.1, 0.5, 1., 10.)
             ref_matrix = symmetric_soc(matrix, θ)
-            calc_matrix = strength_of_connection(SymmetricStrength(θ), matrix)
+            calc_matrix = SymmetricStrength(θ)(matrix)
 
             @test sum(abs2, ref_matrix - calc_matrix) < 1e-6
         end
@@ -128,7 +128,7 @@ function test_standard_aggregation()
     for matrix in cases
         for θ in (0.0, 0.1, 0.5, 1., 10.)
             C = symmetric_soc(matrix, θ)
-            calc_matrix = aggregation(StandardAggregation(), matrix)
+            calc_matrix = StandardAggregation()(matrix)
             ref_matrix = stand_agg(matrix)
             @test sum(abs2, ref_matrix - calc_matrix) < 1e-6
         end
@@ -235,14 +235,14 @@ function test_approximate_spectral_radius()
 end
 
 # Test Gauss Seidel 
-import AlgebraicMultigrid: gs!, relax!
+import AlgebraicMultigrid: gs!
 function test_gauss_seidel()    
     N = 1
     A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = zeros(N)
     s = GaussSeidel(ForwardSweep())
-    relax!(s, A, x, b)
+    s(A, x, b)
     @test sum(abs2, x - zeros(N)) < 1e-8
 
     N = 3 
@@ -250,7 +250,7 @@ function test_gauss_seidel()
     x = eltype(A).(collect(0:N-1))
     b = zeros(N)
     s = GaussSeidel(ForwardSweep())
-    relax!(s, A, x, b)
+    s(A, x, b)
     @test sum(abs2, x - [1.0/2.0, 5.0/4.0, 5.0/8.0]) < 1e-8
 
     N = 1
@@ -258,7 +258,7 @@ function test_gauss_seidel()
     x = eltype(A).(collect(0:N-1))
     b = zeros(N)
     s = GaussSeidel(BackwardSweep())
-    relax!(s, A, x, b)
+    s(A, x, b)
     @test sum(abs2, x - zeros(N)) < 1e-8
 
     N = 3 
@@ -266,7 +266,7 @@ function test_gauss_seidel()
     x = eltype(A).(collect(0:N-1))
     b = zeros(N)
     s = GaussSeidel(BackwardSweep())
-    relax!(s, A, x, b)
+    s(A, x, b)
     @test sum(abs2, x - [1.0/8.0, 1.0/4.0, 1.0/2.0]) < 1e-8
 
     N = 1
@@ -274,7 +274,7 @@ function test_gauss_seidel()
     x = eltype(A).(collect(0:N-1))
     b = eltype(A).([10.])
     s = GaussSeidel(ForwardSweep())
-    relax!(s, A, x, b)
+    s(A, x, b)
     @test sum(abs2, x - [5.]) < 1e-8
 
     N = 3 
@@ -282,7 +282,7 @@ function test_gauss_seidel()
     x = eltype(A).(collect(0:N-1))
     b = eltype(A).([10., 20., 30.])
     s = GaussSeidel(ForwardSweep())
-    relax!(s, A, x, b)
+    s(A, x, b)
     @test sum(abs2, x - [11.0/2.0, 55.0/4, 175.0/8.0]) < 1e-8
 
     N = 100
@@ -290,11 +290,11 @@ function test_gauss_seidel()
     x = ones(eltype(A), N)
     b = zeros(eltype(A), N)
     s1 = GaussSeidel(ForwardSweep(), 200)
-    relax!(s1, A, x, b)
+    s1(A, x, b)
     resid1 = norm(A*x,2)
     x = ones(eltype(A), N)
     s2 = GaussSeidel(BackwardSweep(), 200)
-    relax!(s2, A, x, b)
+    s2(A, x, b)
     resid2 = norm(A*x,2)
     @test resid1 < 0.01 && resid2 < 0.01
     @test isapprox(resid1, resid2)
@@ -305,7 +305,7 @@ end
 function test_jacobi_prolongator()
     A = poisson(100)
     T = poisson(100)
-    x = smooth_prolongator(JacobiProlongation(4/3), A, T, 1, 1)
+    x = JacobiProlongation(4/3)(A, T, 1, 1)
     ref = load("ref_R.jld2")["G"]
     @test sum(abs2, x - ref) < 1e-6
 end
@@ -319,13 +319,12 @@ function nodes_not_agg()
 end
 
 # Issue 26
-import AlgebraicMultigrid: relax!
 function test_symmetric_sweep()
     A = poisson(10)
     s = GaussSeidel(SymmetricSweep(), 4)
     x = ones(size(A,1))
     b = zeros(size(A,1))
-    relax!(s, A, x, b)
+    s(A, x, b)
     @test sum(abs2, x - [0.176765; 0.353529; 0.497517; 0.598914; 
                             0.653311; 0.659104; 0.615597; 0.52275; 
                             0.382787; 0.203251]) < 1e-6        

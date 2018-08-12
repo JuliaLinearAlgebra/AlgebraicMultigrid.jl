@@ -1,7 +1,7 @@
 struct StandardAggregation
 end
 
-function aggregation(::StandardAggregation, S::SparseMatrixCSC{T,R}) where {T,R}
+function (::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
 
     n = size(S, 1)
     x = zeros(R, n)

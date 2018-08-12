@@ -17,7 +17,7 @@ function remove_diag!(a)
 	dropzeros!(a)
 end
 
-function split_nodes(::RS, S)
+function (::RS)(S)
 	remove_diag!(S)
 	RS_CF_splitting(S, copy(S'))
 end

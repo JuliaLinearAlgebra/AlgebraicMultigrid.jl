@@ -1,5 +1,3 @@
-import Compat.LinearAlgebra: \, *, ldiv!, mul!
-
 struct Preconditioner
     ml::MultiLevel
 end

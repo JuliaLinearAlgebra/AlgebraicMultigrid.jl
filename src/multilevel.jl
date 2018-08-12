@@ -130,7 +130,7 @@ end
 function __solve(v::V, ml, x, b, lvl)
 
     A = ml.levels[lvl].A
-    presmoother!(ml.presmoother, A, x, b)
+    ml.presmoother(A, x, b)
 
     res = b - A * x
     coarse_b = ml.levels[lvl].R * res
@@ -144,7 +144,7 @@ function __solve(v::V, ml, x, b, lvl)
 
     x .+= ml.levels[lvl].P * coarse_x
 
-    postsmoother!(ml.postsmoother, A, x, b)
+    ml.postsmoother(A, x, b)
 
     x
 end

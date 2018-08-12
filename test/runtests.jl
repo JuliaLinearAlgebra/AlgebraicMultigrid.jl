@@ -16,13 +16,13 @@ ref_split = readdlm("ref_split_test.txt")
 # classical strength of connection
 A = poisson(5)
 A = float.(A)
-S, T = strength_of_connection(Classical(0.2), A)
+S, T = Classical(0.2)(A)
 @test Matrix(S) == [ 1.0  0.5  0.0  0.0  0.0
                    0.5  1.0  0.5  0.0  0.0
                    0.0  0.5  1.0  0.5  0.0
                    0.0  0.0  0.5  1.0  0.5
                    0.0  0.0  0.0  0.5  1.0 ]
-S, T = strength_of_connection(Classical(0.25), graph)
+S, T = Classical(0.25)(graph)
 diff = S - ref_S
 @test maximum(diff) < 1e-10
 
@@ -32,18 +32,18 @@ end
 
 # Ruge-Stuben splitting
 S = poisson(7)
-@test split_nodes(RS(), S) == [0, 1, 0, 1, 0, 1, 0]
+@test RS()(S) == [0, 1, 0, 1, 0, 1, 0]
 srand(0)
 S = sprand(10,10,0.1); S = S + S'
-@test split_nodes(RS(), S) ==  [0, 1, 1, 0, 0, 0, 0, 0, 1, 1]
+@test RS()(S) ==  [0, 1, 1, 0, 0, 0, 0, 0, 1, 1]
 
 a = load("thing.jld2")["G"]
-S, T = AlgebraicMultigrid.strength_of_connection(Classical(0.25), a)
-@test split_nodes(RS(), S) == [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0,
+S, T = Classical(0.25)(a)
+@test RS()(S) == [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0,
 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0,
 1, 0]
 
-@test split_nodes(RS(), ref_S) == Int.(vec(ref_split))
+@test RS()(ref_S) == Int.(vec(ref_split))
 
 end
 

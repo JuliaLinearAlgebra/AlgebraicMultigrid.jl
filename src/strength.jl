@@ -4,8 +4,7 @@ struct Classical{T} <: Strength
 end
 Classical(;θ = 0.25) = Classical(θ)
 
-function strength_of_connection(c::Classical, 
-                At::SparseMatrixCSC{Tv,Ti}) where {Ti,Tv}
+function (c::Classical)(At::SparseMatrixCSC{Tv,Ti}) where {Ti,Tv}
 
     θ = c.θ
 
@@ -75,7 +74,7 @@ struct SymmetricStrength{T} <: Strength
 end
 SymmetricStrength() = SymmetricStrength(0.)
 
-function strength_of_connection(s::SymmetricStrength{T}, A, bsr_flag = false) where {T}
+function (s::SymmetricStrength{T})(A, bsr_flag = false) where {T}
 
     θ = s.θ
 

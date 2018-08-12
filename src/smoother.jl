@@ -15,29 +15,16 @@ GaussSeidel(f::ForwardSweep) = GaussSeidel(f, 1)
 GaussSeidel(b::BackwardSweep) = GaussSeidel(b, 1)
 GaussSeidel(s::SymmetricSweep) = GaussSeidel(s, 1)
 
-presmoother!(s, A, x, b) = smoother!(s, s.sweep, A, x, b)
-postsmoother!(s, A, x, b) = smoother!(s, s.sweep, A, x, b)
-relax!(s, A, x, b) = smoother!(s, s.sweep, A, x, b)
-
-function smoother!(s::GaussSeidel, ::ForwardSweep, A, x, b)
+function (s::GaussSeidel{S})(A, x, b) where {S<:Sweep}
     for i in 1:s.iter
-        gs!(A, b, x, 1, 1, size(A, 1))
+        if S === ForwardSweep || S === SymmetricSweep
+            gs!(A, b, x, 1, 1, size(A, 1))
+        end
+        if S === BackwardSweep || S === SymmetricSweep
+            gs!(A, b, x, size(A, 1), -1, 1)
+        end
     end
 end
-
-function smoother!(s::GaussSeidel, ::SymmetricSweep, A, x, b)
-    for i in 1:s.iter
-        gs!(A, b, x, 1, 1, size(A, 1))
-        gs!(A, b, x, size(A,1), -1, 1)
-    end
-end
-
-function smoother!(s::GaussSeidel, ::BackwardSweep, A, x, b)
-    for i in 1:s.iter
-        gs!(A, b, x, size(A,1), -1, 1)
-    end
-end
-
 
 function gs!(A, b, x, start, step, stop)
     n = size(A, 1)
@@ -104,10 +91,7 @@ end
 struct LocalWeighting
 end
 
-function smooth_prolongator(j::JacobiProlongation,
-                                        A, T, S, B,
-                                        degree = 1,
-                                        weighting = LocalWeighting())
+function (j::JacobiProlongation)(A, T, S, B, degree = 1, weighting = LocalWeighting())
     D_inv_S = weight(weighting, A, j.ω)
     P = T
     for i = 1:degree

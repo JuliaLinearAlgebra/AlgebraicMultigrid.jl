@@ -28,8 +28,8 @@ end
 
 function extend_heirarchy!(levels::Vector{Level{Ti,Tv}}, strength, CF, A::SparseMatrixCSC{Ti,Tv}) where {Ti,Tv}
     At = copy(A')
-    S, T = strength_of_connection(strength, At)
-    splitting = split_nodes(CF, S)
+    S, T = strength(At)
+    splitting = CF(S)
     P, R = direct_interpolation(At, T, splitting)
     push!(levels, Level(A, P, R))
     A = R * A * P

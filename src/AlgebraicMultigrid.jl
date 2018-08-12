@@ -14,17 +14,17 @@ include("utils.jl")
 export approximate_spectral_radius
 
 include("strength.jl")
-export strength_of_connection, Classical, SymmetricStrength
+export Classical, SymmetricStrength
 
 include("splitting.jl")
-export split_nodes, RS
+export RS
 
 include("gallery.jl")
 export poisson
 
 include("smoother.jl")
 export GaussSeidel, SymmetricSweep, ForwardSweep, BackwardSweep,
-        smooth_prolongator, JacobiProlongation
+        JacobiProlongation
 
 include("multilevel.jl")
 export solve
@@ -33,7 +33,7 @@ include("classical.jl")
 export ruge_stuben
 
 include("aggregate.jl")
-export aggregation, StandardAggregation
+export StandardAggregation
 
 include("aggregation.jl")
 export fit_candidates, smoothed_aggregation
