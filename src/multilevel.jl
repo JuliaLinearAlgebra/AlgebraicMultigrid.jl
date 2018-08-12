@@ -13,11 +13,14 @@ struct MultiLevel{S, Pre, Post, Ti, Tv}
 end
 
 abstract type CoarseSolver end
-struct Pinv <: CoarseSolver
+struct Pinv{T} <: CoarseSolver
+    pinvA::Matrix{T}
+    Pinv(A) = new{eltype(A)}(pinv(Matrix(A)))
 end
+(p::Pinv)(x, b) = mul!(x, p.pinvA, b)
 
 MultiLevel(l::Vector{Level{Ti,Tv}}, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother) where {Ti,Tv} =
-    MultiLevel(l, A, Pinv(), presmoother, postsmoother)
+    MultiLevel(l, A, Pinv(A), presmoother, postsmoother)
 Base.length(ml) = length(ml.levels) + 1
 
 function Base.show(io::IO, ml::MultiLevel)
@@ -113,9 +116,9 @@ function solve(ml::MultiLevel, b::AbstractVector{T},
     lvl = 1
     while length(residuals) <= maxiter && residuals[end] > tol
         if length(ml) == 1
-            x = coarse_solver(ml.coarse_solver, A, b)
+            ml.coarse_solver(x, b)
         else
-            x = __solve(cycle, ml, x, b, lvl)
+            __solve!(x, ml, cycle, b, lvl)
         end
         push!(residuals, T(norm(b - A * x)))
     end
@@ -127,7 +130,7 @@ function solve(ml::MultiLevel, b::AbstractVector{T},
         return x
     end
 end
-function __solve(v::V, ml, x, b, lvl)
+function __solve!(x, ml, v::V, b, lvl)
 
     A = ml.levels[lvl].A
     ml.presmoother(A, x, b)
@@ -137,9 +140,9 @@ function __solve(v::V, ml, x, b, lvl)
     coarse_x = zeros(eltype(coarse_b), size(coarse_b))
 
     if lvl == length(ml.levels)
-        coarse_x = coarse_solver(ml.coarse_solver, ml.final_A, coarse_b)
+        ml.coarse_solver(coarse_x, coarse_b)
     else
-        coarse_x = __solve(v, ml, coarse_x, coarse_b, lvl + 1)
+        coarse_x = __solve!(coarse_x, ml, v, coarse_b, lvl + 1)
     end
 
     x .+= ml.levels[lvl].P * coarse_x
@@ -148,5 +151,3 @@ function __solve(v::V, ml, x, b, lvl)
 
     x
 end
-
-coarse_solver(::Pinv, A, b) = pinv(Matrix(A)) * b

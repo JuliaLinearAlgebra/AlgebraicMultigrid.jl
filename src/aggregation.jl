@@ -10,8 +10,7 @@ function smoothed_aggregation(A::SparseMatrixCSC{T,V},
                         max_coarse = 10,
                         diagonal_dominance = false,
                         keep = false,
-                        coarse_solver = Pinv()) where {T,V}
-
+                        coarse_solver = Pinv) where {T,V}
 
     n = size(A, 1)
     # B = kron(ones(n, 1), eye(1))
@@ -42,7 +41,7 @@ function smoothed_aggregation(A::SparseMatrixCSC{T,V},
     #=A, B = extend_hierarchy!(levels, strength, aggregate, smooth,
                             improve_candidates, diagonal_dominance,
                             keep, A, B, symmetry)=#
-    MultiLevel(levels, A, presmoother, postsmoother)
+    MultiLevel(levels, A, coarse_solver(A), presmoother, postsmoother)
 end
 
 struct HermitianSymmetry

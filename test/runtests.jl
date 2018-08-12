@@ -1,7 +1,7 @@
 using Compat, Compat.Test, Compat.LinearAlgebra
 using Compat.SparseArrays, Compat.DelimitedFiles, Compat.Random
 using IterativeSolvers, FileIO, AlgebraicMultigrid
-import AlgebraicMultigrid: V, coarse_solver, Pinv, Classical
+import AlgebraicMultigrid: Pinv, Classical
 
 include("sa_tests.jl")
 
@@ -68,7 +68,7 @@ end
 @testset "Coarse Solver" begin
 A = float.(poisson(10))
 b = A * ones(10)
-@test sum(abs2, coarse_solver(Pinv(), A, b) - ones(10)) < 1e-6
+@test sum(abs2, Pinv(A)(similar(b), b) - ones(10)) < 1e-6
 end
 
 @testset "Multilevel" begin
