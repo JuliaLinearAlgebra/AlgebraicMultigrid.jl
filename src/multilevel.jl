@@ -186,16 +186,19 @@ function __solve!(x, ml, v::V, b, lvl)
     mul!(res, A, x)
     res .= b .- res
 
-    coarse_b = ml.levels[lvl].R * res
-    coarse_x = zeros(eltype(coarse_b), size(coarse_b))
+    coarse_b = ml.workspace.coarse_bs[lvl]
+    mul!(coarse_b, ml.levels[lvl].R, res)
 
+    coarse_x = ml.workspace.coarse_xs[lvl]
+    coarse_x .= 0
     if lvl == length(ml.levels)
         ml.coarse_solver(coarse_x, coarse_b)
     else
         coarse_x = __solve!(coarse_x, ml, v, coarse_b, lvl + 1)
     end
 
-    x .+= ml.levels[lvl].P * coarse_x
+    mul!(res, ml.levels[lvl].P, coarse_x)
+    x .+= res
 
     ml.postsmoother(A, x, b)
 
