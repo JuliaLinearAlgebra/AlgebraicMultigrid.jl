@@ -54,8 +54,10 @@ end
 abstract type CoarseSolver end
 struct Pinv{T} <: CoarseSolver
     pinvA::Matrix{T}
-    Pinv(A) = new{eltype(A)}(pinv(Matrix(A)))
+    Pinv{T}(A) where T = new{T}(pinv(Matrix(A)))
 end
+Pinv(A) = Pinv{eltype(A)}(A)
+
 (p::Pinv)(x, b) = mul!(x, p.pinvA, b)
 
 Base.length(ml) = length(ml.levels) + 1

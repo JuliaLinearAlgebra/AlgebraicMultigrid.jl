@@ -7,6 +7,10 @@ using Base.Threads
 
 using Compat: rmul!
 
+if VERSION < v"0.7-"
+    const mul! = A_mul_B!
+end
+
 const MT = false
 const AMG = AlgebraicMultigrid
 
