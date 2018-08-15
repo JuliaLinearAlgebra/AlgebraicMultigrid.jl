@@ -32,11 +32,6 @@ else
 end
 
 function \(p::Preconditioner, b)
-    if p.init == :zero
-        x = zeros(b)
-    else
-        x = copy(b)
-    end
-    solve!(x, p.ml, b)
+    ldiv!(similar(b), p, b)
 end
 *(p::Preconditioner, b) = p.ml.levels[1].A * x
