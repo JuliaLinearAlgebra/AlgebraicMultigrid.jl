@@ -29,15 +29,15 @@ end
 function gs!(A, b, x, start, step, stop)
     n = size(A, 1)
     z = zero(eltype(A))
-    @inbounds for col = 1:size(x, 2)
-        for i = start:step:stop
+    @inbounds for col in 1:size(x, 2)
+        for i in start:step:stop
             rsum = z
             d = z
             for j in nzrange(A, i)
                 row = A.rowval[j]
                 val = A.nzval[j]
                 d = ifelse(i == row, val, d)
-                rsum += ifelse(i == row, 0, val * x[row, col])
+                rsum += ifelse(i == row, z, val * x[row, col])
             end
             x[i, col] = ifelse(d == 0, x[i, col], (b[i, col] - rsum) / d)
         end
@@ -57,6 +57,7 @@ function (jacobi::Jacobi)(A, x, b)
     ω = jacobi.ω
     one = Base.one(eltype(A))
     temp = jacobi.temp
+    z = zero(eltype(A))
 
     for i in 1:jacobi.iter
         @inbounds for col = 1:size(x, 2)
@@ -65,15 +66,15 @@ function (jacobi::Jacobi)(A, x, b)
             end
 
             for i = 1:size(A, 1)
-                rsum = zero(eltype(A))
-                diag = zero(eltype(A))
+                rsum = z
+                diag = z
 
                 for j in nzrange(A, i)
                     row = A.rowval[j]
                     val = A.nzval[j]
 
                     diag = ifelse(row == i, val, diag)
-                    rsum += ifelse(row == i, 0, val * temp[row, col])
+                    rsum += ifelse(row == i, z, val * temp[row, col])
                 end
 
                 xcand = (one - ω) * temp[i, col] + ω * ((b[i, col] - rsum) / diag)
@@ -116,15 +117,16 @@ function (pjacobmapper::ParallelJacobiMapper)(i)
     col = pjacobmapper.col
 
     one = Base.one(eltype(A))
-    rsum = zero(eltype(A))
-    diag = zero(eltype(A))
+    z = zero(eltype(A))
+    rsum = z
+    diag = z
 
     for j in nzrange(A, i)
         row = A.rowval[j]
         val = A.nzval[j]
 
         diag = ifelse(row == i, val, diag)
-        rsum += ifelse(row == i, 0, val * temp[row, col])
+        rsum += ifelse(row == i, z, val * temp[row, col])
     end
     xcand = (one - ω) * temp[i, col] + ω * ((b[i, col] - rsum) / diag)
     
