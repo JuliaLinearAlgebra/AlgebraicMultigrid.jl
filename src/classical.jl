@@ -7,24 +7,43 @@ struct Solver{S,T,P,PS}
     max_coarse::Int64
 end
 
-function ruge_stuben(A::SparseMatrixCSC{Ti,Tv}, ::Type{Val{bs}}=Val{1};
+function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}}, 
+                ::Type{Val{bs}}=Val{1};
                 strength = Classical(0.25),
                 CF = RS(),
                 presmoother = GaussSeidel(),
                 postsmoother = GaussSeidel(),
                 max_levels = 10,
                 max_coarse = 10,
-                coarse_solver = Pinv) where {Ti,Tv,bs}
+                coarse_solver = Pinv) where {Ti,Tv,bs,TA<:SparseMatrixCSC{Ti,Tv}}
 
     s = Solver(strength, CF, presmoother,
                 postsmoother, max_levels, max_levels)
 
-    levels = Vector{Level{Ti,Tv}}()
+    if _A isa Symmetric && Ti <: Real || _A isa Hermitian
+        A = _A.data
+        At = A
+        symmetric = true
+        @static if VERSION < v"0.7-"
+            levels = Vector{Level{TA, TA}}()
+        else
+            levels = Vector{Level{TA, Adjoint{Ti, TA}, TA}}()
+        end
+    else
+        symmetric = false
+        A = _A
+        At = adjoint(A)
+        @static if VERSION < v"0.7-"
+            levels = Vector{Level{TA, TA, TA}}()
+        else
+            levels = Vector{Level{TA, Adjoint{Ti, TA}, TA}}()
+        end
+    end
     w = MultiLevelWorkspace(Val{bs}, eltype(A))
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
         residual!(w, size(A, 1))
-        A = extend_heirarchy!(levels, strength, CF, A)
+        A = extend_heirarchy!(levels, strength, CF, A, symmetric)
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
     end
@@ -32,8 +51,12 @@ function ruge_stuben(A::SparseMatrixCSC{Ti,Tv}, ::Type{Val{bs}}=Val{1};
     MultiLevel(levels, A, coarse_solver(A), presmoother, postsmoother, w)
 end
 
-function extend_heirarchy!(levels::Vector{Level{Ti,Tv}}, strength, CF, A::SparseMatrixCSC{Ti,Tv}) where {Ti,Tv}
-    At = copy(A')
+function extend_heirarchy!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, symmetric) where {Ti,Tv}
+    if symmetric
+        At = A
+    else
+        At = adjoint(A)
+    end
     S, T = strength(At)
     splitting = CF(S)
     P, R = direct_interpolation(At, T, splitting)
@@ -48,7 +71,7 @@ function direct_interpolation(At, T, splitting)
     Pp = rs_direct_interpolation_pass1(T, splitting)
     Px, Pj, Pp = rs_direct_interpolation_pass2(At, T, splitting, Pp)
     R = SparseMatrixCSC(maximum(Pj), size(At, 1), Pp, Pj, Px)
-    P = copy(R')
+    P = R'
 
     P, R
 end

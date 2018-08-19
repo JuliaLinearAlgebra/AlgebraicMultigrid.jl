@@ -1,4 +1,5 @@
-function smoothed_aggregation(A::SparseMatrixCSC{T,V}, ::Type{Val{bs}}=Val{1},
+function smoothed_aggregation(A::TA, 
+                        ::Type{Val{bs}}=Val{1},
                         symmetry = HermitianSymmetry(),
                         strength = SymmetricStrength(),
                         aggregate = StandardAggregation(),
@@ -10,7 +11,7 @@ function smoothed_aggregation(A::SparseMatrixCSC{T,V}, ::Type{Val{bs}}=Val{1},
                         max_coarse = 10,
                         diagonal_dominance = false,
                         keep = false,
-                        coarse_solver = Pinv) where {T,V,bs}
+                        coarse_solver = Pinv) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
 
     n = size(A, 1)
     # B = kron(ones(n, 1), eye(1))
@@ -27,7 +28,11 @@ function smoothed_aggregation(A::SparseMatrixCSC{T,V}, ::Type{Val{bs}}=Val{1},
     # agg = [aggregate for _ in 1:max_levels - 1]
     # sm = [smooth for _ in 1:max_levels]
 
-    levels = Vector{Level{T,V}}()
+    @static if VERSION < v"0.7-"
+        levels = Vector{Level{TA, TA, TA}}()
+    else
+        levels = Vector{Level{TA, TA, Adjoint{T, TA}}}()
+    end
     bsr_flag = false
     w = MultiLevelWorkspace(Val{bs}, eltype(A))
 
@@ -57,7 +62,11 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
                             symmetry, bsr_flag)
 
     # Calculate strength of connection matrix
-    S = strength(A, bsr_flag)
+    if symmetry isa HermitianSymmetry
+        S, _T = strength(A, bsr_flag)
+    else
+        S, _T = strength(adjoint(A), bsr_flag)
+    end
 
     # Aggregation operator
     AggOp = aggregate(S)
@@ -80,11 +89,11 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
 
     A, B, bsr_flag
 end
-construct_R(::HermitianSymmetry, P) = copy(P')
+construct_R(::HermitianSymmetry, P) = P'
 
 function fit_candidates(AggOp, B, tol = 1e-10)
 
-    A = copy(AggOp')
+    A = adjoint(AggOp)
     n_fine, n_coarse = size(A)
     n_col = n_coarse
 

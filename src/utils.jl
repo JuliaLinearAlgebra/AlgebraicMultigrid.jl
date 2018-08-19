@@ -1,3 +1,11 @@
+function adjoint(A)
+    @static if VERSION < v"0.7-"
+        A'
+    else
+        copy(A')
+    end
+end
+
 function approximate_spectral_radius(A, tol = 0.01,
                                         maxiter = 15, restart = 5)
 

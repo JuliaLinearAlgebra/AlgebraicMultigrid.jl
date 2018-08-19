@@ -33,7 +33,7 @@ function (c::Classical)(At::SparseMatrixCSC{Tv,Ti}) where {Ti,Tv}
 
     scale_cols_by_largest_entry!(T)
 
-    copy(T'), T
+    adjoint(T), T
 end
 
 function find_max_off_diag(A, i)
@@ -81,7 +81,7 @@ function (s::SymmetricStrength{T})(A, bsr_flag = false) where {T}
     if bsr_flag && θ == 0
         S = SparseMatrixCSC(size(A)...,
                     A.colptr, A.rowval, ones(eltype(A), size(A.rowval)))
-        return S
+        return S, S
     else
         S = deepcopy(A)
     end
@@ -118,5 +118,5 @@ function (s::SymmetricStrength{T})(A, bsr_flag = false) where {T}
     S.nzval .= abs.(S.nzval)
     scale_cols_by_largest_entry!(S)    
 
-    S
+    S, S
 end

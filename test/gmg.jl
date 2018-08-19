@@ -1,9 +1,9 @@
 import AlgebraicMultigrid: Level, MultiLevel, GaussSeidel
 
-function multigrid(A::SparseMatrixCSC{T,V}; max_levels = 10, max_coarse = 10,
-                    presmoother = GaussSeidel(), postsmoother = GaussSeidel()) where {T,V}
+function multigrid(A::TA; max_levels = 10, max_coarse = 10,
+                    presmoother = GaussSeidel(), postsmoother = GaussSeidel()) where {T,V,TA<:SparseMatrixCSC{T,V}}
 
-    levels = Vector{Level{T,V}}()
+    levels = Vector{Level{TA,TA,TA}}()
     w = AlgebraicMultigrid.MultiLevelWorkspace(Val{1}, eltype(A))
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
@@ -43,7 +43,7 @@ function extend!(levels, A::SparseMatrixCSC{Ti,Tv}) where {Ti,Tv}
     
     P = sparse(I, J, V, size_F, size_C)
 
-    R = copy(P')
+    R = AlgebraicMultigrid.adjoint(P)
 
     push!(levels, Level(A, P, R))
 

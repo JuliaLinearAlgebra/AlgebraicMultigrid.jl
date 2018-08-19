@@ -30,7 +30,7 @@ function test_symmetric_soc()
     for matrix in cases
         for θ in (0.0, 0.1, 0.5, 1., 10.)
             ref_matrix = symmetric_soc(matrix, θ)
-            calc_matrix = SymmetricStrength(θ)(matrix)
+            calc_matrix, _ = SymmetricStrength(θ)(matrix)
 
             @test sum(abs2, ref_matrix - calc_matrix) < 1e-6
         end

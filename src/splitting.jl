@@ -19,7 +19,7 @@ end
 
 function (::RS)(S)
 	remove_diag!(S)
-	RS_CF_splitting(S, copy(S'))
+	RS_CF_splitting(S, adjoint(S))
 end
 
 function RS_CF_splitting(S::SparseMatrixCSC, T::SparseMatrixCSC)

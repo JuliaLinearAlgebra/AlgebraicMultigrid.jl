@@ -1,12 +1,12 @@
-struct Level{T,V}
-    A::SparseMatrixCSC{T,V}
-    P::SparseMatrixCSC{T,V}
-    R::SparseMatrixCSC{T,V}
+struct Level{TA, TP, TR}
+    A::TA
+    P::TP
+    R::TR
 end
 
-struct MultiLevel{S, Pre, Post, Ti, Tv, TW}
-    levels::Vector{Level{Ti,Tv}}
-    final_A::SparseMatrixCSC{Ti,Tv}
+struct MultiLevel{S, Pre, Post, TA, TP, TR, TW}
+    levels::Vector{Level{TA, TP, TR}}
+    final_A::TA
     coarse_solver::S
     presmoother::Pre
     postsmoother::Post
