@@ -1,17 +1,17 @@
-function smoothed_aggregation(A::SparseMatrixCSC{T,V},
+function smoothed_aggregation(A::TA, 
+                        ::Type{Val{bs}}=Val{1},
                         symmetry = HermitianSymmetry(),
                         strength = SymmetricStrength(),
                         aggregate = StandardAggregation(),
                         smooth = JacobiProlongation(4.0/3.0),
                         presmoother = GaussSeidel(),
                         postsmoother = GaussSeidel(),
-                        improve_candidates = GaussSeidel(4),
+                        improve_candidates = GaussSeidel(iter=4),
                         max_levels = 10,
                         max_coarse = 10,
                         diagonal_dominance = false,
                         keep = false,
-                        coarse_solver = Pinv()) where {T,V}
-
+                        coarse_solver = Pinv) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
 
     n = size(A, 1)
     # B = kron(ones(n, 1), eye(1))
@@ -28,13 +28,21 @@ function smoothed_aggregation(A::SparseMatrixCSC{T,V},
     # agg = [aggregate for _ in 1:max_levels - 1]
     # sm = [smooth for _ in 1:max_levels]
 
-    levels = Vector{Level{T,V}}()
+    @static if VERSION < v"0.7-"
+        levels = Vector{Level{TA, TA, TA}}()
+    else
+        levels = Vector{Level{TA, TA, Adjoint{T, TA}}}()
+    end
     bsr_flag = false
+    w = MultiLevelWorkspace(Val{bs}, eltype(A))
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
+        residual!(w, size(A, 1))
         A, B, bsr_flag = extend_hierarchy!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
                                 keep, A, B, symmetry, bsr_flag)
+        coarse_x!(w, size(A, 1))
+        coarse_b!(w, size(A, 1))
         #=if size(A, 1) <= max_coarse
             break
         end=#
@@ -42,7 +50,7 @@ function smoothed_aggregation(A::SparseMatrixCSC{T,V},
     #=A, B = extend_hierarchy!(levels, strength, aggregate, smooth,
                             improve_candidates, diagonal_dominance,
                             keep, A, B, symmetry)=#
-    MultiLevel(levels, A, presmoother, postsmoother)
+    MultiLevel(levels, A, coarse_solver(A), presmoother, postsmoother, w)
 end
 
 struct HermitianSymmetry
@@ -54,18 +62,22 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
                             symmetry, bsr_flag)
 
     # Calculate strength of connection matrix
-    S = strength_of_connection(strength, A, bsr_flag)
+    if symmetry isa HermitianSymmetry
+        S, _T = strength(A, bsr_flag)
+    else
+        S, _T = strength(adjoint(A), bsr_flag)
+    end
 
     # Aggregation operator
-    AggOp = aggregation(aggregate, S)
+    AggOp = aggregate(S)
     # b = zeros(eltype(A), size(A, 1))
 
     # Improve candidates
     b = zeros(size(A,1))
-    relax!(improve_candidates, A, B, b)
+    improve_candidates(A, B, b)
     T, B = fit_candidates(AggOp, B)
 
-    P = smooth_prolongator(smooth, A, T, S, B)
+    P = smooth(A, T, S, B)
     R = construct_R(symmetry, P)
     push!(levels, Level(A, P, R))
 
@@ -81,7 +93,7 @@ construct_R(::HermitianSymmetry, P) = P'
 
 function fit_candidates(AggOp, B, tol = 1e-10)
 
-    A = AggOp.'
+    A = adjoint(AggOp)
     n_fine, n_coarse = size(A)
     n_col = n_coarse
 

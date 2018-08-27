@@ -4,6 +4,8 @@ os:
   - linux
 julia:
   - 0.6
+  - 0.7
+  - 1.0
   - nightly
 notifications:
   email: false
@@ -14,7 +16,7 @@ git:
 ## (tests will run but not make your overall status red)
 matrix:
   allow_failures:
-  - julia: nightly
+    - julia: nightly
 
 ## uncomment and modify the following lines to manually install system packages
 addons:
@@ -25,10 +27,10 @@ addons:
 #  - if [ $TRAVIS_OS_NAME = osx ]; then brew install gcc; fi
 
 ## uncomment the following lines to override the default test script
-#script:
-#  - julia -e 'Pkg.clone(pwd()); Pkg.build("AMG"); Pkg.test("AMG"; coverage=true)'
+script:
+  - julia -e 'VERSION >= v"0.7-" && using Pkg; Pkg.clone(pwd()); Pkg.build("AlgebraicMultigrid"); Pkg.test("AlgebraicMultigrid"; coverage=true)'
 after_success:
   # push coverage results to Coveralls
-  - julia -e 'cd(Pkg.dir("AMG")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+  - julia -e 'cd(Pkg.dir("AlgebraicMultigrid")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
   # push coverage results to Codecov
-  - julia -e 'cd(Pkg.dir("AMG")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+  - julia -e 'cd(Pkg.dir("AlgebraicMultigrid")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'

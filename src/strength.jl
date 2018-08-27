@@ -4,37 +4,36 @@ struct Classical{T} <: Strength
 end
 Classical(;θ = 0.25) = Classical(θ)
 
-function strength_of_connection(c::Classical{T}, 
-                A::SparseMatrixCSC{Tv,Ti}) where {T,Ti,Tv}
+function (c::Classical)(At::SparseMatrixCSC{Tv,Ti}) where {Ti,Tv}
 
     θ = c.θ
 
-    m, n = size(A)
-    S = deepcopy(A)
+    m, n = size(At)
+    T = deepcopy(At)
 
     for i = 1:n
-        _m = find_max_off_diag(A, i)
+        _m = find_max_off_diag(T, i)
         threshold = θ * _m
-        for j in nzrange(A, i)
-            row = A.rowval[j]
-            val = A.nzval[j]
+        for j in nzrange(T, i)
+            row = T.rowval[j]
+            val = T.nzval[j]
 
             if row != i
                 if abs(val) >= threshold
-                    S.nzval[j] = abs(val)
+                    T.nzval[j] = abs(val)
                 else
-                    S.nzval[j] = 0
+                    T.nzval[j] = 0
                 end
             end
 
         end
     end
+    
+    dropzeros!(T)
 
-    dropzeros!(S)
+    scale_cols_by_largest_entry!(T)
 
-    scale_cols_by_largest_entry!(S)
-
-    S', S
+    adjoint(T), T
 end
 
 function find_max_off_diag(A, i)
@@ -60,7 +59,6 @@ function find_max(A, i)
 end
 
 function scale_cols_by_largest_entry!(A::SparseMatrixCSC)
-
     n = size(A, 1)
     for i = 1:n
         _m = find_max(A, i)
@@ -76,19 +74,19 @@ struct SymmetricStrength{T} <: Strength
 end
 SymmetricStrength() = SymmetricStrength(0.)
 
-function strength_of_connection{T}(s::SymmetricStrength{T}, A, bsr_flag = false)
+function (s::SymmetricStrength{T})(A, bsr_flag = false) where {T}
 
     θ = s.θ
 
     if bsr_flag && θ == 0
         S = SparseMatrixCSC(size(A)...,
                     A.colptr, A.rowval, ones(eltype(A), size(A.rowval)))
-        return S
+        return S, S
     else
         S = deepcopy(A)
     end
     n = size(A, 1)
-    diags = Vector{eltype(A)}(n)
+    diags = Vector{eltype(A)}(undef, n)
 
     for i = 1:n
         diag = zero(eltype(A))
@@ -117,16 +115,8 @@ function strength_of_connection{T}(s::SymmetricStrength{T}, A, bsr_flag = false)
 
     dropzeros!(S)
 
-    # S.nzval .= abs.(S.nzval)
-    # for i = 1:size(S.nzval, 1)
-    #      S.nzval[i] = abs(S.nzval[i])
-    # end
+    S.nzval .= abs.(S.nzval)
+    scale_cols_by_largest_entry!(S)    
 
-    scale_cols_by_largest_entry!(S)
-    
-    for i = 1:size(S.nzval, 1)
-         S.nzval[i] = abs(S.nzval[i])
-    end
-
-    S
+    S, S
 end

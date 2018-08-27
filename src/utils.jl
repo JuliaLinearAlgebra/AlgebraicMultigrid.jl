@@ -1,3 +1,11 @@
+function adjoint(A)
+    @static if VERSION < v"0.7-"
+        A'
+    else
+        copy(A')
+    end
+end
+
 function approximate_spectral_radius(A, tol = 0.01,
                                         maxiter = 15, restart = 5)
 
@@ -21,19 +29,19 @@ function approximate_spectral_radius(A, tol = 0.01,
         # m, max_index = findmax(abs.(ev))
         m, max_index = findmaxabs(ev)
         error = H[nvecs, nvecs-1] * evect[end, max_index]
+        @static if VERSION < v"0.7-"
+            @views A_mul_B!(v0, X, evect[:, max_index])
+        else
+            @views mul!(v0, X, evect[:, max_index])
+        end
         if (abs(error) / abs(ev[max_index]) < tol) || flag
             # v0 = X * evect[:, max_index]
-            A_mul_B!(v0, X, evect[:, max_index])
             break
-        else
-            # v0 = X * evect[:, max_index]
-            A_mul_B!(v0, X, evect[:, max_index])
         end
     end
-
     ρ = abs(ev[max_index])
-
 end
+
 function findmaxabs(arr)
     m = abs(arr[1])
     m_i = 1
@@ -70,7 +78,7 @@ function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
         w = A * V[end]
         # V[j+1] = A * V[j]
         # w = V[j+1]
-        # A_mul_B!(w, A, V[j])
+        # mul!(w, A, V[j])
         for (i,v) in enumerate(V)
         # for i = 1:j
             v = V[i]
@@ -81,17 +89,21 @@ function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
         if H[j+1, j] < breakdown
             flag = true
             if H[j+1,j] != 0
-                scale!(w, 1/H[j+1,j])
+                rmul!(w, 1/H[j+1,j])
                 push!(V, w)
                 break
             end
         end
 
         #w = w / H[j+1, j]
-        scale!(w, 1/H[j+1,j])
+        rmul!(w, 1/H[j+1,j])
         push!(V, w)
     end
-    Eigs, Vects = eig(H[1:maxiter, 1:maxiter], eye(eltype(A), maxiter))
+    @static if VERSION < v"0.7-"
+        Eigs, Vects = eig(H[1:maxiter, 1:maxiter], Matrix{eltype(A)}(I, maxiter, maxiter))
+    else
+        Eigs, Vects = (eigen(H[1:maxiter, 1:maxiter], Matrix{eltype(A)}(I, maxiter, maxiter))...,)
+    end
 
     Vects, Eigs, H, V, flag
 end
