@@ -1,15 +1,15 @@
 # Algebraic Multigrid (AMG)
 
-[![Build Status](https://travis-ci.org/ranjanan/AMG.jl.svg?branch=master)](https://travis-ci.org/ranjanan/AMG.jl)
-[![Coverage Status](https://coveralls.io/repos/ranjanan/AMG.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/ranjanan/AMG.jl?branch=master)
-[![codecov.io](http://codecov.io/github/ranjanan/AMG.jl/coverage.svg?branch=master)](http://codecov.io/github/ranjanan/AMG.jl?branch=master)
+[![Build Status](https://travis-ci.org/ranjanan/AlgebraicMultigrid.jl.svg?branch=master)](https://travis-ci.org/ranjanan/AlgebraicMultigrid.jl)
+[![Coverage Status](https://coveralls.io/repos/ranjanan/AlgebraicMultigrid.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/ranjanan/AlgebraicMultigrid.jl?branch=master)
+[![codecov.io](http://codecov.io/github/ranjanan/AlgebraicMultigrid.jl/coverage.svg?branch=master)](http://codecov.io/github/ranjanan/AlgebraicMultigrid.jl?branch=master)
 
 This package lets you solve sparse linear systems using Algebraic Multigrid (AMG). This works especially well for symmetric positive definite matrices. 
 
 ## Usage
 
 ```julia
-using AMG
+using AlgebraicMultigrid
 
 A = poisson(1000) # Creates a sample symmetric positive definite sparse matrix
 ml = ruge_stuben(A) # Construct a Ruge-Stuben solver
@@ -56,13 +56,14 @@ Strength of Connection:
 
 Smoothers:
 * Gauss Seidel (Symmetric, Forward, Backward)
+* Damped Jacobi
 
 Cycling:
 * V cycle 
 
 In the future, this package will support:
 1. Other splitting methods (like CLJP)
-2. SOR, Jacobi smoothers
+2. SOR smoother
 3. W, F, AMLI cycles
 
 #### Acknowledgements
