@@ -316,6 +316,7 @@ for f in (smoothed_aggregation, ruge_stuben)
     b[1] = 1
     b[2] = -1
     @test sum(abs2, a * solve(ml, b) - b) < 1e-10
+    @test sum(abs2, a * cg(a, b, Pl = p, maxiter = 1000) - b) < 1e-10
 
 end
 
