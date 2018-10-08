@@ -2,6 +2,8 @@ using Compat, Compat.Test, Compat.LinearAlgebra
 using Compat.SparseArrays, Compat.DelimitedFiles, Compat.Random
 using IterativeSolvers, AlgebraicMultigrid
 import AlgebraicMultigrid: Pinv, Classical
+using JLD2
+using FileIO
 
 if VERSION < v"0.7-"
     const seed! = srand
@@ -302,6 +304,19 @@ for sz in [10, 5, 2]
     @test size(ml.final_A) == (sz,sz)
     @test AlgebraicMultigrid.operator_complexity(ml) == 1
     @test AlgebraicMultigrid.grid_complexity(ml) == 1
+end
+
+# Issue #46
+for f in (smoothed_aggregation, ruge_stuben)
+
+    a = load("bug.jld2")["G"]
+    ml = f(a)
+    p = aspreconditioner(ml)
+    b = zeros(size(a,1))
+    b[1] = 1
+    b[2] = -1
+    @test sum(abs2, a * solve(ml, b) - b) < 1e-10
+
 end
 
 end
