@@ -35,7 +35,6 @@ function smoothed_aggregation(A::TA,
     end
     bsr_flag = false
     w = MultiLevelWorkspace(Val{bs}, eltype(A))
-    println("sup maga")
     residual!(w, size(A, 1))
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
