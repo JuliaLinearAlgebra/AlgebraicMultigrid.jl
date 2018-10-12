@@ -35,9 +35,9 @@ function smoothed_aggregation(A::TA,
     end
     bsr_flag = false
     w = MultiLevelWorkspace(Val{bs}, eltype(A))
+    residual!(w, size(A, 1))
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
-        residual!(w, size(A, 1))
         A, B, bsr_flag = extend_hierarchy!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
                                 keep, A, B, symmetry, bsr_flag)
@@ -46,6 +46,7 @@ function smoothed_aggregation(A::TA,
         #=if size(A, 1) <= max_coarse
             break
         end=#
+        residual!(w, size(A, 1))
     end
     #=A, B = extend_hierarchy!(levels, strength, aggregate, smooth,
                             improve_candidates, diagonal_dominance,

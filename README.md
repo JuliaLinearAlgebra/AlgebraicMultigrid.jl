@@ -1,8 +1,9 @@
 # Algebraic Multigrid (AMG)
 
-[![Build Status](https://travis-ci.org/ranjanan/AlgebraicMultigrid.jl.svg?branch=master)](https://travis-ci.org/ranjanan/AlgebraicMultigrid.jl)
-[![Coverage Status](https://coveralls.io/repos/ranjanan/AlgebraicMultigrid.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/ranjanan/AlgebraicMultigrid.jl?branch=master)
-[![codecov.io](http://codecov.io/github/ranjanan/AlgebraicMultigrid.jl/coverage.svg?branch=master)](http://codecov.io/github/ranjanan/AlgebraicMultigrid.jl?branch=master)
+[![Build Status](https://travis-ci.org/JuliaLinearAlgebra/AlgebraicMultigrid.jl.svg?branch=master)](https://travis-ci.org/JuliaLinearAlgebra/AlgebraicMultigrid.jl)
+[![Coverage Status](https://coveralls.io/repos/JuliaLinearAlgebra/AlgebraicMultigrid.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/JuliaLinearAlgebra/AlgebraicMultigrid.jl?branch=master)
+[![codecov.io](http://codecov.io/github/JuliaLinearAlgebra/AlgebraicMultigrid.jl/coverage.svg?branch=master)](http://codecov.io/github/JuliaLinearAlgebra/AlgebraicMultigrid.jl?branch=master)
+[![Build status](https://ci.appveyor.com/api/projects/status/0wnj4lhk1rvl5pjp?svg=true)](https://ci.appveyor.com/project/ranjanan/algebraicmultigrid-jl)
 
 This package lets you solve sparse linear systems using Algebraic Multigrid (AMG). This works especially well for symmetric positive definite matrices. 
 

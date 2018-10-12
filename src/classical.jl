@@ -40,12 +40,13 @@ function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}},
         end
     end
     w = MultiLevelWorkspace(Val{bs}, eltype(A))
+    residual!(w, size(A, 1))
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
-        residual!(w, size(A, 1))
         A = extend_heirarchy!(levels, strength, CF, A, symmetric)
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
+        residual!(w, size(A, 1))
     end
 
     MultiLevel(levels, A, coarse_solver(A), presmoother, postsmoother, w)
