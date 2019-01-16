@@ -79,11 +79,20 @@ function Base.show(io::IO, ml::MultiLevel)
     end
     lstr = lstr *
         @sprintf "   %2d   %10d   %10d [%5.2f%%]" length(ml.levels) + 1 size(ml.final_A, 1) nnz(ml.final_A) (100 * nnz(ml.final_A) / total_nnz)
+
+    @static if VERSION < v"0.7-"
+        opround = round(op, 3)
+        ground = round(op, 3)
+    else
+        opround = round(op, digits = 3)
+        ground = round(op, digits = 3)
+    end
+
     str = """
     Multilevel Solver
     -----------------
-    Operator Complexity: $(round(op, 3))
-    Grid Complexity: $(round(g, 3))
+    Operator Complexity: $opround
+    Grid Complexity: $ground
     No. of Levels: $(length(ml))
     Coarse Solver: $c
     Level     Unknowns     NonZeros
