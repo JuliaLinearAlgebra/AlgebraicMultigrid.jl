@@ -3,8 +3,8 @@ struct Solver{S,T,P,PS}
     CF::T
     presmoother::P
     postsmoother::PS
-    max_levels::Int64
-    max_coarse::Int64
+    max_levels::Int
+    max_coarse::Int
 end
 
 function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}}, 
