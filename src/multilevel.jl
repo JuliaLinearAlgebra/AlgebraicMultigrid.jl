@@ -57,6 +57,7 @@ struct Pinv{T} <: CoarseSolver
     Pinv{T}(A) where T = new{T}(pinv(Matrix(A)))
 end
 Pinv(A) = Pinv{eltype(A)}(A)
+Base.show(io::IO, a::Pinv) = print(io, "Pinv()")
 
 (p::Pinv)(x, b) = mul!(x, p.pinvA, b)
 
