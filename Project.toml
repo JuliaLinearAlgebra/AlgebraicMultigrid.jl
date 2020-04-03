@@ -1,5 +1,6 @@
 name = "AlgebraicMultigrid"
 uuid = "2169fc97-5a83-5252-b627-83903c6c433c"
+version = "0.3.0"
 
 [deps]
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
