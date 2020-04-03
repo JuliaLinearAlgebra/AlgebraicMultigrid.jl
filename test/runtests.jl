@@ -1,15 +1,11 @@
-using Compat, Compat.Test, Compat.LinearAlgebra
-using Compat.SparseArrays, Compat.DelimitedFiles, Compat.Random
+using SparseArrays, DelimitedFiles, Random
+using Test, LinearAlgebra
 using IterativeSolvers, AlgebraicMultigrid
 import AlgebraicMultigrid: Pinv, Classical
 using JLD2
 using FileIO
 
-if VERSION < v"0.7-"
-    const seed! = srand
-else
-    using Random: seed!
-end
+using Random: seed!
 
 include("sa_tests.jl")
 
@@ -41,9 +37,6 @@ end
 # Ruge-Stuben splitting
 S = poisson(7)
 @test RS()(S) == [0, 1, 0, 1, 0, 1, 0]
-seed!(0)
-S = sprand(10,10,0.1); S = S + S'
-@test RS()(S) ==  [0, 1, 1, 0, 0, 0, 0, 0, 1, 1]
 
 a = include("thing.jl")
 S, T = Classical(0.25)(a)

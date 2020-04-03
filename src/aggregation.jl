@@ -28,11 +28,7 @@ function smoothed_aggregation(A::TA,
     # agg = [aggregate for _ in 1:max_levels - 1]
     # sm = [smooth for _ in 1:max_levels]
 
-    @static if VERSION < v"0.7-"
-        levels = Vector{Level{TA, TA, TA}}()
-    else
-        levels = Vector{Level{TA, TA, Adjoint{T, TA}}}()
-    end
+    levels = Vector{Level{TA, TA, Adjoint{T, TA}}}()
     bsr_flag = false
     w = MultiLevelWorkspace(Val{bs}, eltype(A))
     residual!(w, size(A, 1))
