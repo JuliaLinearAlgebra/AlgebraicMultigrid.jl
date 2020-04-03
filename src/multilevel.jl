@@ -80,13 +80,8 @@ function Base.show(io::IO, ml::MultiLevel)
     lstr = lstr *
         @sprintf "   %2d   %10d   %10d [%5.2f%%]" length(ml.levels) + 1 size(ml.final_A, 1) nnz(ml.final_A) (100 * nnz(ml.final_A) / total_nnz)
 
-    @static if VERSION < v"0.7-"
-        opround = round(op, 3)
-        ground = round(op, 3)
-    else
-        opround = round(op, digits = 3)
-        ground = round(op, digits = 3)
-    end
+    opround = round(op, digits = 3)
+    ground = round(op, digits = 3)
 
     str = """
     Multilevel Solver

@@ -1,9 +1,5 @@
 function adjoint(A)
-    @static if VERSION < v"0.7-"
-        A'
-    else
-        copy(A')
-    end
+    copy(A')
 end
 
 function approximate_spectral_radius(A, tol = 0.01,
@@ -29,11 +25,7 @@ function approximate_spectral_radius(A, tol = 0.01,
         # m, max_index = findmax(abs.(ev))
         m, max_index = findmaxabs(ev)
         error = H[nvecs, nvecs-1] * evect[end, max_index]
-        @static if VERSION < v"0.7-"
-            @views A_mul_B!(v0, X, evect[:, max_index])
-        else
-            @views mul!(v0, X, evect[:, max_index])
-        end
+        @views mul!(v0, X, evect[:, max_index])
         if (abs(error) / abs(ev[max_index]) < tol) || flag
             # v0 = X * evect[:, max_index]
             break
@@ -99,11 +91,7 @@ function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
         rmul!(w, 1/H[j+1,j])
         push!(V, w)
     end
-    @static if VERSION < v"0.7-"
-        Eigs, Vects = eig(H[1:maxiter, 1:maxiter], Matrix{eltype(A)}(I, maxiter, maxiter))
-    else
-        Eigs, Vects = (eigen(H[1:maxiter, 1:maxiter], Matrix{eltype(A)}(I, maxiter, maxiter))...,)
-    end
+    Eigs, Vects = (eigen(H[1:maxiter, 1:maxiter], Matrix{eltype(A)}(I, maxiter, maxiter))...,)
 
     Vects, Eigs, H, V, flag
 end
