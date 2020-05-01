@@ -60,7 +60,7 @@ Pinv(A) = Pinv{eltype(A)}(A)
 
 (p::Pinv)(x, b) = mul!(x, p.pinvA, b)
 
-Base.length(ml) = length(ml.levels) + 1
+Base.length(ml::MultiLevel) = length(ml.levels) + 1
 
 function Base.show(io::IO, ml::MultiLevel)
     op = operator_complexity(ml)
