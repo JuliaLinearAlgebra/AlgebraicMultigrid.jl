@@ -1,6 +1,6 @@
 The AMG.jl package is licensed under the MIT "Expat" License:
 
-> Copyright (c) 2017: ranjanan.
+> Copyright (c) 2017-20: ranjanan, Julia Computing.
 >
 > Permission is hereby granted, free of charge, to any person obtaining a copy
 > of this software and associated documentation files (the "Software"), to deal
