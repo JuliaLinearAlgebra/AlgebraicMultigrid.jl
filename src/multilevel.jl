@@ -13,41 +13,38 @@ struct MultiLevel{S, Pre, Post, TA, TP, TR, TW}
     workspace::TW
 end
 
-struct MultiLevelWorkspace{TX, bs}
-    coarse_xs::Vector{TX}
-    coarse_bs::Vector{TX}
-    res_vecs::Vector{TX}
+struct MultiLevelWorkspace{T, bs}
+    coarse_xs::Vector{Vector{Vector{T}}}
+    coarse_bs::Vector{Vector{Vector{T}}}
+    res_vecs::Vector{Vector{Vector{T}}}
 end
 function MultiLevelWorkspace(::Type{Val{bs}}, ::Type{T}) where {bs, T<:Number}
-    if bs === 1
-        TX = Vector{T}
-    else
-        TX = Matrix{T}
-    end
-    MultiLevelWorkspace{TX, bs}(TX[], TX[], TX[])
+    MultiLevelWorkspace{T, bs}( Vector{Vector{Vector{T}}}[], 
+                                Vector{Vector{Vector{T}}}[], 
+                                Vector{Vector{Vector{T}}}[])
 end
-Base.eltype(w::MultiLevelWorkspace{TX}) where TX = eltype(TX)
-blocksize(w::MultiLevelWorkspace{TX, bs}) where {TX, bs} = bs
+Base.eltype(w::MultiLevelWorkspace{T}) where T = T
+blocksize(w::MultiLevelWorkspace{T, bs}) where {T, bs} = bs
 
-function residual!(m::MultiLevelWorkspace{TX, bs}, n) where {TX, bs}
+function residual!(m::MultiLevelWorkspace{T, bs}, n) where {T, bs}
     if bs === 1
-        push!(m.res_vecs, TX(undef, n))
+        push!(m.res_vecs, [Vector{T}(undef, n) for _ in 1:nthreads()])
     else
-        push!(m.res_vecs, TX(undef, n, bs))
+        push!(m.res_vecs, [Vector{T}(undef, n, bs) for _ in 1:nthreads()])
     end
 end
-function coarse_x!(m::MultiLevelWorkspace{TX, bs}, n) where {TX, bs}
+function coarse_x!(m::MultiLevelWorkspace{T, bs}, n) where {T, bs}
     if bs === 1
-        push!(m.coarse_xs, TX(undef, n))
+        push!(m.coarse_xs, [Vector{T}(undef, n) for _ in 1:nthreads()])
     else
-        push!(m.coarse_xs, TX(undef, n, bs))
+        push!(m.coarse_xs, [Vector{T}(undef, n, bs) for _ in 1:nthreads()])
     end
 end
-function coarse_b!(m::MultiLevelWorkspace{TX, bs}, n) where {TX, bs}
+function coarse_b!(m::MultiLevelWorkspace{T, bs}, n) where {T, bs}
     if bs === 1
-        push!(m.coarse_bs, TX(undef, n))
+        push!(m.coarse_bs, [Vector{T}(undef, n) for _ in 1:nthreads()])
     else
-        push!(m.coarse_bs, TX(undef, n, bs))
+        push!(m.coarse_bs, [Vector{T}(undef, n, bs) for _ in 1:nthreads()])
     end
 end
 
@@ -150,7 +147,7 @@ function solve!(x, ml::MultiLevel, b::AbstractArray{T},
                                     tol::Float64 = 1e-5,
                                     verbose::Bool = false,
                                     log::Bool = false,
-                                    calculate_residual = true) where {T}
+                                    calculate_residual = false) where {T}
 
     A = length(ml) == 1 ? ml.final_A : ml.levels[1].A
     V = promote_type(eltype(A), eltype(b))
@@ -187,14 +184,14 @@ function __solve!(x, ml, v::V, b, lvl)
     A = ml.levels[lvl].A
     ml.presmoother(A, x, b)
 
-    res = ml.workspace.res_vecs[lvl]
+    res = ml.workspace.res_vecs[lvl][threadid()]
     mul!(res, A, x)
     reshape(res, size(b)) .= b .- reshape(res, size(b))
 
-    coarse_b = ml.workspace.coarse_bs[lvl]
+    coarse_b = ml.workspace.coarse_bs[lvl][threadid()]
     mul!(coarse_b, ml.levels[lvl].R, res)
 
-    coarse_x = ml.workspace.coarse_xs[lvl]
+    coarse_x = ml.workspace.coarse_xs[lvl][threadid()]
     coarse_x .= 0
     if lvl == length(ml.levels)
         ml.coarse_solver(coarse_x, coarse_b)
