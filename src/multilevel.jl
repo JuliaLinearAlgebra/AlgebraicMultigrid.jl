@@ -184,12 +184,14 @@ function __solve!(x, ml, v::V, b, lvl)
     A = ml.levels[lvl].A
     ml.presmoother(A, x, b)
 
-    res = ml.workspace.res_vecs[lvl][threadid()]
-    mul!(res, A, x)
+    # res = ml.workspace.res_vecs[lvl][threadid()]
+    # mul!(res, A, x)
+    res = A * x
     reshape(res, size(b)) .= b .- reshape(res, size(b))
 
-    coarse_b = ml.workspace.coarse_bs[lvl][threadid()]
-    mul!(coarse_b, ml.levels[lvl].R, res)
+    # coarse_b = ml.workspace.coarse_bs[lvl][threadid()]
+    # mul!(coarse_b, ml.levels[lvl].R, res)
+    coarse_b = ml.levels[lvl].R * res
 
     coarse_x = ml.workspace.coarse_xs[lvl][threadid()]
     coarse_x .= 0
@@ -200,6 +202,7 @@ function __solve!(x, ml, v::V, b, lvl)
     end
 
     mul!(res, ml.levels[lvl].P, coarse_x)
+    # res = ml.levels[]
     x .+= res
 
     ml.postsmoother(A, x, b)
