@@ -132,7 +132,8 @@ Arguments
 
 Keyword Arguments
 =================
-* tol::Float64 - tolerance criteria for convergence
+* reltol::Float64 - relative tolerance criteria for convergence, the absolute tolerance will be `reltol * norm(b)`
+* abstol::Float64 - absolute tolerance criteria for convergence
 * maxiter::Int64 - maximum number of iterations to execute
 * verbose::Bool - display residual at each iteration
 * log::Bool - return vector of residuals along with solution
@@ -147,24 +148,24 @@ end
 function solve!(x, ml::MultiLevel, b::AbstractArray{T},
                                     cycle::Cycle = V();
                                     maxiter::Int = 100,
-                                    tol::Float64 = 1e-5,
+                                    abstol::Real = zero(real(eltype(b))),
+                                    reltol::Real = sqrt(eps(real(eltype(b)))),
                                     verbose::Bool = false,
                                     log::Bool = false,
                                     calculate_residual = true) where {T}
 
     A = length(ml) == 1 ? ml.final_A : ml.levels[1].A
     V = promote_type(eltype(A), eltype(b))
-    tol = eltype(b)(tol)
     log && (residuals = Vector{V}())
     normres = normb = norm(b)
     if normb != 0
-        tol *= normb
+        abstol = max(reltol * normb, abstol)
     end
     log && push!(residuals, normb)
 
     res = ml.workspace.res_vecs[1]
     itr = lvl = 1
-    while itr <= maxiter && (!calculate_residual || normres > tol)
+    while itr <= maxiter && (!calculate_residual || normres > abstol)
         if length(ml) == 1
             ml.coarse_solver(x, b)
         else
