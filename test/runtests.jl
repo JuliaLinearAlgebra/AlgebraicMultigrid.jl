@@ -8,6 +8,7 @@ using FileIO
 using Random: seed!
 
 include("sa_tests.jl")
+include("cycle_tests.jl")
 
 @testset "AlgebraicMultigrid Tests" begin
 
@@ -139,6 +140,9 @@ ml = ruge_stuben(A)
 x = solve(ml, A * ones(100))
 @test sum(abs2, x - zeros(100)) < 1e-6
 
+
+
+
 end
 
 @testset "Preconditioning" begin
@@ -237,7 +241,7 @@ for (T,V) in ((Float64, Float64), (Float32,Float32),
         b = V.(b)
         c = cg(a, b, maxiter = 10)
         @test eltype(solve(ml, b)) == eltype(c)
-end    
+end
 
 end
 
@@ -269,6 +273,10 @@ end
 
 @testset "Jacobi Prolongation" begin
     test_jacobi_prolongator()
+end
+
+@testset "Cycles" begin
+    test_cycles()
 end
 
 @testset "Int32 support" begin

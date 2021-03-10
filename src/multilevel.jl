@@ -66,8 +66,8 @@ function Base.show(io::IO, ml::MultiLevel)
     op = operator_complexity(ml)
     g = grid_complexity(ml)
     c = ml.coarse_solver
-    total_nnz = nnz(ml.final_A) 
-    if !isempty(ml.levels) 
+    total_nnz = nnz(ml.final_A)
+    if !isempty(ml.levels)
         total_nnz += sum(nnz(level.A) for level in ml.levels)
     end
     lstr = ""
@@ -119,6 +119,12 @@ abstract type Cycle end
 struct V <: Cycle
 end
 
+struct W <: Cycle
+end
+
+struct F <: Cycle
+end
+
 """
     solve(ml::MultiLevel, b::AbstractArray, cycle, kwargs...)
 
@@ -140,7 +146,7 @@ Keyword Arguments
 
 """
 function solve(ml::MultiLevel, b::AbstractArray, args...; kwargs...)
-    n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1) 
+    n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1)
     V = promote_type(eltype(ml.workspace), eltype(b))
     x = zeros(V, size(b))
     return solve!(x, ml, b, args...; kwargs...)
@@ -183,8 +189,22 @@ function solve!(x, ml::MultiLevel, b::AbstractArray{T},
     # @show residuals
     log ? (x, residuals) : x
 end
-function __solve!(x, ml, v::V, b, lvl)
 
+function __solve_next!(x, ml, cycle::V, b, lvl)
+    __solve!(x, ml, cycle, b, lvl)
+end
+
+function __solve_next!(x, ml, cycle::W, b, lvl)
+    __solve!(x, ml, cycle, b, lvl)
+    __solve!(x, ml, cycle, b, lvl)
+end
+
+function __solve_next!(x, ml, cycle::F, b, lvl)
+    __solve!(x, ml, cycle, b, lvl)
+    __solve!(x, ml, V(), b, lvl)
+end
+
+function __solve!(x, ml, cycle::Cycle, b, lvl)
     A = ml.levels[lvl].A
     ml.presmoother(A, x, b)
 
@@ -200,7 +220,7 @@ function __solve!(x, ml, v::V, b, lvl)
     if lvl == length(ml.levels)
         ml.coarse_solver(coarse_x, coarse_b)
     else
-        coarse_x = __solve!(coarse_x, ml, v, coarse_b, lvl + 1)
+        coarse_x = __solve_next!(coarse_x, ml, cycle, coarse_b, lvl + 1)
     end
 
     mul!(res, ml.levels[lvl].P, coarse_x)
