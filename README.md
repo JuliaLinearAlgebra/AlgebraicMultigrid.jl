@@ -5,7 +5,7 @@
 [![codecov.io](http://codecov.io/github/JuliaLinearAlgebra/AlgebraicMultigrid.jl/coverage.svg?branch=master)](http://codecov.io/github/JuliaLinearAlgebra/AlgebraicMultigrid.jl?branch=master)
 [![Build status](https://ci.appveyor.com/api/projects/status/0wnj4lhk1rvl5pjp?svg=true)](https://ci.appveyor.com/project/ranjanan/algebraicmultigrid-jl)
 
-This package lets you solve sparse linear systems using Algebraic Multigrid (AMG). This works especially well for symmetric positive definite matrices. 
+This package lets you solve sparse linear systems using Algebraic Multigrid (AMG). This works especially well for symmetric positive definite matrices.
 
 ## Usage
 
@@ -40,18 +40,18 @@ You can use AMG as a preconditioner for Krylov methods such as Conjugate Gradien
 ```julia
 import IterativeSolvers: cg
 p = aspreconditioner(ml)
-c = cg(A, A*ones(1000), Pl = p) 
+c = cg(A, A*ones(1000), Pl = p)
 ```
 
 ## Features and Roadmap
 
-This package currently supports: 
+This package currently supports:
 
 AMG Styles:
 * Ruge-Stuben Solver
 * Smoothed Aggregation (SA)
 
-Strength of Connection: 
+Strength of Connection:
 * Classical Strength of Connection
 * Symmetric Strength of Connection
 
@@ -60,12 +60,12 @@ Smoothers:
 * Damped Jacobi
 
 Cycling:
-* V cycle 
+* V, W and F cycles
 
 In the future, this package will support:
 1. Other splitting methods (like CLJP)
 2. SOR smoother
-3. W, F, AMLI cycles
+3. AMLI cycles
 
 #### Acknowledgements
-This package has been heavily inspired by the [`PyAMG`](http://github.com/pyamg/pyamg) project. 
+This package has been heavily inspired by the [`PyAMG`](http://github.com/pyamg/pyamg) project.

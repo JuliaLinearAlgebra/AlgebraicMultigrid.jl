@@ -1,10 +1,11 @@
-struct Preconditioner{ML<:MultiLevel}
+struct Preconditioner{ML<:MultiLevel,C<:Cycle}
     ml::ML
     init::Symbol
+    cycle::C
 end
-Preconditioner(ml) = Preconditioner(ml, :zero)
+Preconditioner(ml, cycle::Cycle) = Preconditioner(ml, :zero, cycle)
 
-aspreconditioner(ml::MultiLevel) = Preconditioner(ml)
+aspreconditioner(ml::MultiLevel, cycle::Cycle = V()) = Preconditioner(ml,cycle)
 
 import LinearAlgebra: \, *, ldiv!, mul!
 ldiv!(p::Preconditioner, b) = copyto!(b, p \ b)
@@ -14,7 +15,7 @@ function ldiv!(x, p::Preconditioner, b)
     else
         x .= b
     end
-    solve!(x, p.ml, b, maxiter = 1, calculate_residual = false)
+    solve!(x, p.ml, b, p.cycle, maxiter = 1, calculate_residual = false)
 end
 mul!(b, p::Preconditioner, x) = mul!(b, p.ml.levels[1].A, x)
 
