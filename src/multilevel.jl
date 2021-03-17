@@ -29,7 +29,7 @@ end
 Base.eltype(w::MultiLevelWorkspace{TX}) where TX = eltype(TX)
 blocksize(w::MultiLevelWorkspace{TX, bs}) where {TX, bs} = bs
 
-function residual!(m::MultiLevelWorkspace{TX, bs}, n) where {TX, bs}
+#=function residual!(m::MultiLevelWorkspace{TX, bs}, n) where {TX, bs}
     if bs === 1
         push!(m.res_vecs, TX(undef, n))
     else
@@ -49,7 +49,7 @@ function coarse_b!(m::MultiLevelWorkspace{TX, bs}, n) where {TX, bs}
     else
         push!(m.coarse_bs, TX(undef, n, bs))
     end
-end
+end=#
 
 abstract type CoarseSolver end
 struct Pinv{T} <: CoarseSolver
@@ -58,9 +58,10 @@ struct Pinv{T} <: CoarseSolver
 end
 Pinv(A) = Pinv{eltype(A)}(A)
 
-(p::Pinv)(x, b) = mul!(x, p.pinvA, b)
+# (p::Pinv)(x, b) = mul!(x, p.pinvA, b)
+(p::Pinv)(b) = p.pinvA * b
 
-Base.length(ml) = length(ml.levels) + 1
+Base.length(ml::MultiLevel) = length(ml.levels) + 1
 
 function Base.show(io::IO, ml::MultiLevel)
     op = operator_complexity(ml)
@@ -163,17 +164,20 @@ function solve!(x, ml::MultiLevel, b::AbstractArray{T},
     end
     log && push!(residuals, normb)
 
-    res = ml.workspace.res_vecs[1]
+    # res = ml.workspace.res_vecs[1]
+    res = zeros(size(b, 1))
     itr = lvl = 1
     while itr <= maxiter && (!calculate_residual || normres > abstol)
         if length(ml) == 1
-            ml.coarse_solver(x, b)
+            x = pinv(Matrix(ml.final_A))* b
+            # x = ml.coarse_solver(b)
         else
             __solve!(x, ml, cycle, b, lvl)
         end
         if calculate_residual
-            mul!(res, A, x)
-            reshape(res, size(b)) .= b .- reshape(res, size(b))
+            # mul!(res, A, x)
+            # reshape(res, size(b)) .= b .- reshape(res, size(b))
+            res = A * x - b
             normres = norm(res)
             log && push!(residuals, normres)
         end
@@ -188,22 +192,27 @@ function __solve!(x, ml, v::V, b, lvl)
     A = ml.levels[lvl].A
     ml.presmoother(A, x, b)
 
-    res = ml.workspace.res_vecs[lvl]
-    mul!(res, A, x)
-    reshape(res, size(b)) .= b .- reshape(res, size(b))
+    # res = ml.workspace.res_vecs[lvl]
+    # mul!(res, A, x)
+    tmp = A * x
+    # reshape(res, size(b)) .= b .- reshape(res, size(b))
+    # res = reshape(res, size(b))
+    res = tmp - b
 
-    coarse_b = ml.workspace.coarse_bs[lvl]
-    mul!(coarse_b, ml.levels[lvl].R, res)
+    # coarse_b = ml.workspace.coarse_bs[lvl]
+    # mul!(coarse_b, ml.levels[lvl].R, res)
+    coarse_b = ml.levels[lvl].R * res
 
-    coarse_x = ml.workspace.coarse_xs[lvl]
-    coarse_x .= 0
+    # coarse_x = ml.workspace.coarse_xs[lvl]
+    # coarse_x .= 0
     if lvl == length(ml.levels)
-        ml.coarse_solver(coarse_x, coarse_b)
+        coarse_x = ml.coarse_solver(coarse_b)
     else
         coarse_x = __solve!(coarse_x, ml, v, coarse_b, lvl + 1)
     end
 
-    mul!(res, ml.levels[lvl].P, coarse_x)
+    # mul!(res, ml.levels[lvl].P, coarse_x)
+    res = ml.levels[lvl].P * coarse_x 
     x .+= res
 
     ml.postsmoother(A, x, b)
