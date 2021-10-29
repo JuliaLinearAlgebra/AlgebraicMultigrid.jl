@@ -1,5 +1,5 @@
 function smoothed_aggregation(A::TA, 
-                        ::Type{Val{bs}}=Val{1},
+                        ::Type{Val{bs}}=Val{1};
                         symmetry = HermitianSymmetry(),
                         strength = SymmetricStrength(),
                         aggregate = StandardAggregation(),
