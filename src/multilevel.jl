@@ -60,14 +60,14 @@ Pinv(A) = Pinv{eltype(A)}(A)
 
 (p::Pinv)(x, b) = mul!(x, p.pinvA, b)
 
-Base.length(ml) = length(ml.levels) + 1
+Base.length(ml::MultiLevel) = length(ml.levels) + 1
 
 function Base.show(io::IO, ml::MultiLevel)
     op = operator_complexity(ml)
     g = grid_complexity(ml)
     c = ml.coarse_solver
-    total_nnz = nnz(ml.final_A) 
-    if !isempty(ml.levels) 
+    total_nnz = nnz(ml.final_A)
+    if !isempty(ml.levels)
         total_nnz += sum(nnz(level.A) for level in ml.levels)
     end
     lstr = ""
@@ -80,13 +80,8 @@ function Base.show(io::IO, ml::MultiLevel)
     lstr = lstr *
         @sprintf "   %2d   %10d   %10d [%5.2f%%]" length(ml.levels) + 1 size(ml.final_A, 1) nnz(ml.final_A) (100 * nnz(ml.final_A) / total_nnz)
 
-    @static if VERSION < v"0.7-"
-        opround = round(op, 3)
-        ground = round(op, 3)
-    else
-        opround = round(op, digits = 3)
-        ground = round(op, digits = 3)
-    end
+    opround = round(op, digits = 3)
+    ground = round(op, digits = 3)
 
     str = """
     Multilevel Solver
@@ -124,6 +119,12 @@ abstract type Cycle end
 struct V <: Cycle
 end
 
+struct W <: Cycle
+end
+
+struct F <: Cycle
+end
+
 """
     solve(ml::MultiLevel, b::AbstractArray, cycle, kwargs...)
 
@@ -137,14 +138,15 @@ Arguments
 
 Keyword Arguments
 =================
-* tol::Float64 - tolerance criteria for convergence
+* reltol::Float64 - relative tolerance criteria for convergence, the absolute tolerance will be `reltol * norm(b)`
+* abstol::Float64 - absolute tolerance criteria for convergence
 * maxiter::Int64 - maximum number of iterations to execute
 * verbose::Bool - display residual at each iteration
 * log::Bool - return vector of residuals along with solution
 
 """
 function solve(ml::MultiLevel, b::AbstractArray, args...; kwargs...)
-    n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1) 
+    n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1)
     V = promote_type(eltype(ml.workspace), eltype(b))
     x = zeros(V, size(b))
     return solve!(x, ml, b, args...; kwargs...)
@@ -152,24 +154,24 @@ end
 function solve!(x, ml::MultiLevel, b::AbstractArray{T},
                                     cycle::Cycle = V();
                                     maxiter::Int = 100,
-                                    tol::Float64 = 1e-5,
+                                    abstol::Real = zero(real(eltype(b))),
+                                    reltol::Real = sqrt(eps(real(eltype(b)))),
                                     verbose::Bool = false,
                                     log::Bool = false,
                                     calculate_residual = true) where {T}
 
     A = length(ml) == 1 ? ml.final_A : ml.levels[1].A
     V = promote_type(eltype(A), eltype(b))
-    tol = eltype(b)(tol)
     log && (residuals = Vector{V}())
     normres = normb = norm(b)
     if normb != 0
-        tol *= normb
+        abstol = max(reltol * normb, abstol)
     end
     log && push!(residuals, normb)
 
     res = ml.workspace.res_vecs[1]
     itr = lvl = 1
-    while itr <= maxiter && (!calculate_residual || normres > tol)
+    while itr <= maxiter && (!calculate_residual || normres > abstol)
         if length(ml) == 1
             ml.coarse_solver(x, b)
         else
@@ -187,8 +189,22 @@ function solve!(x, ml::MultiLevel, b::AbstractArray{T},
     # @show residuals
     log ? (x, residuals) : x
 end
-function __solve!(x, ml, v::V, b, lvl)
 
+function __solve_next!(x, ml, cycle::V, b, lvl)
+    __solve!(x, ml, cycle, b, lvl)
+end
+
+function __solve_next!(x, ml, cycle::W, b, lvl)
+    __solve!(x, ml, cycle, b, lvl)
+    __solve!(x, ml, cycle, b, lvl)
+end
+
+function __solve_next!(x, ml, cycle::F, b, lvl)
+    __solve!(x, ml, cycle, b, lvl)
+    __solve!(x, ml, V(), b, lvl)
+end
+
+function __solve!(x, ml, cycle::Cycle, b, lvl)
     A = ml.levels[lvl].A
     ml.presmoother(A, x, b)
 
@@ -204,7 +220,7 @@ function __solve!(x, ml, v::V, b, lvl)
     if lvl == length(ml.levels)
         ml.coarse_solver(coarse_x, coarse_b)
     else
-        coarse_x = __solve!(coarse_x, ml, v, coarse_b, lvl + 1)
+        coarse_x = __solve_next!(coarse_x, ml, cycle, coarse_b, lvl + 1)
     end
 
     mul!(res, ml.levels[lvl].P, coarse_x)

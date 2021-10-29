@@ -1,35 +1,23 @@
-struct Preconditioner{ML<:MultiLevel}
+struct Preconditioner{ML<:MultiLevel,C<:Cycle}
     ml::ML
     init::Symbol
+    cycle::C
 end
-Preconditioner(ml) = Preconditioner(ml, :zero)
+Preconditioner(ml, cycle::Cycle) = Preconditioner(ml, :zero, cycle)
 
-aspreconditioner(ml::MultiLevel) = Preconditioner(ml)
+aspreconditioner(ml::MultiLevel, cycle::Cycle = V()) = Preconditioner(ml,cycle)
 
-@static if VERSION < v"0.7-"
-    import Base: \, *, A_ldiv_B!, A_mul_B!
-    function A_ldiv_B!(x, p::Preconditioner, b)
-        if p.init == :zero
-            x .= 0
-        else
-            x .= b
-        end
-        solve!(x, p.ml, b, maxiter = 1, calculate_residual = false)
+import LinearAlgebra: \, *, ldiv!, mul!
+ldiv!(p::Preconditioner, b) = copyto!(b, p \ b)
+function ldiv!(x, p::Preconditioner, b)
+    if p.init == :zero
+        x .= 0
+    else
+        x .= b
     end
-    A_mul_B!(b, p::Preconditioner, x) = A_mul_B!(b, p.ml.levels[1].A, x)
-else
-    import Compat.LinearAlgebra: \, *, ldiv!, mul!
-    ldiv!(p::Preconditioner, b) = copyto!(b, p \ b)
-    function ldiv!(x, p::Preconditioner, b)
-        if p.init == :zero
-            x .= 0
-        else
-            x .= b
-        end
-        solve!(x, p.ml, b, maxiter = 1, calculate_residual = false)
-    end
-    mul!(b, p::Preconditioner, x) = mul!(b, p.ml.levels[1].A, x)
+    solve!(x, p.ml, b, p.cycle, maxiter = 1, calculate_residual = false)
 end
+mul!(b, p::Preconditioner, x) = mul!(b, p.ml.levels[1].A, x)
 
 function \(p::Preconditioner, b)
     ldiv!(similar(b), p, b)

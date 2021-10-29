@@ -1,15 +1,13 @@
 module AlgebraicMultigrid
 
 import IterativeSolvers: gauss_seidel!
-using Compat, Compat.LinearAlgebra
-using Compat.SparseArrays, Compat.Printf
+using LinearAlgebra
+using SparseArrays, Printf
 using Base.Threads
 
-using Compat: rmul!
+using LinearAlgebra: rmul!
 
-if VERSION < v"0.7-"
-    const mul! = A_mul_B!
-end
+# const mul! = A_mul_B!
 
 const MT = false
 const AMG = AlgebraicMultigrid

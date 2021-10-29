@@ -1,17 +1,14 @@
-using Compat, Compat.Test, Compat.LinearAlgebra
-using Compat.SparseArrays, Compat.DelimitedFiles, Compat.Random
+using SparseArrays, DelimitedFiles, Random
+using Test, LinearAlgebra
 using IterativeSolvers, AlgebraicMultigrid
 import AlgebraicMultigrid: Pinv, Classical
 using JLD2
 using FileIO
 
-if VERSION < v"0.7-"
-    const seed! = srand
-else
-    using Random: seed!
-end
+using Random: seed!
 
 include("sa_tests.jl")
+include("cycle_tests.jl")
 
 @testset "AlgebraicMultigrid Tests" begin
 
@@ -41,9 +38,6 @@ end
 # Ruge-Stuben splitting
 S = poisson(7)
 @test RS()(S) == [0, 1, 0, 1, 0, 1, 0]
-seed!(0)
-S = sprand(10,10,0.1); S = S + S'
-@test RS()(S) ==  [0, 1, 1, 0, 0, 0, 0, 0, 1, 1]
 
 a = include("thing.jl")
 S, T = Classical(0.25)(a)
@@ -146,6 +140,9 @@ ml = ruge_stuben(A)
 x = solve(ml, A * ones(100))
 @test sum(abs2, x - zeros(100)) < 1e-6
 
+
+
+
 end
 
 @testset "Preconditioning" begin
@@ -158,7 +155,7 @@ p = aspreconditioner(ml)
 b = zeros(n)
 b[1] = 1
 b[2] = -1
-x = solve(p.ml, A * ones(n), maxiter = 1, tol = 1e-12)
+x = solve(p.ml, A * ones(n), maxiter = 1, abstol = 1e-12)
 diff = x - [  1.88664780e-16,   2.34982727e-16,   2.33917697e-16,
          8.77869044e-17,   7.16783490e-17,   1.43415460e-16,
          3.69199021e-17,   9.70950385e-17,   4.77034895e-17,
@@ -176,7 +173,7 @@ diff = x - [  1.88664780e-16,   2.34982727e-16,   2.33917697e-16,
         -6.76965535e-16,  -7.00643227e-16,  -6.23581397e-16,
         -7.03016682e-16]
 @test sum(abs2, diff) < 1e-8
-x = solve(p.ml, b, maxiter = 1, tol = 1e-12)
+x = solve(p.ml, b, maxiter = 1, abstol = 1e-12)
 diff = x - [ 0.76347046, -0.5498286 , -0.2705487 , -0.15047352, -0.10248021,
         0.60292674, -0.11497073, -0.08460548, -0.06931461,  0.38230708,
        -0.055664  , -0.04854558, -0.04577031,  0.09964325,  0.01825624,
@@ -206,7 +203,7 @@ diff = x - [ 0.82365077, -0.537589  , -0.30632349, -0.19370186, -0.14773294,
 ml = ruge_stuben(A)
 p = aspreconditioner(ml)
 
-x = cg(A, b, Pl = p, maxiter = 100_000, tol = 1e-6)
+x = cg(A, b, Pl = p, maxiter = 100_000, reltol = 1e-6)
 diff = x - [0.823762, -0.537478, -0.306212, -0.19359, -0.147621, 0.685002,
             -0.155389, -0.127703, -0.111867, 0.453735, -0.0856607, -0.0858715,
             -0.0846678, 0.129962, 0.0281662, -0.0389642, -0.0593981, -0.0653311,
@@ -217,7 +214,7 @@ diff = x - [0.823762, -0.537478, -0.306212, -0.19359, -0.147621, 0.685002,
             0.0511691, 0.0502043, 0.0498349, 0.0498134]
 @test sum(abs2, diff) < 1e-8
 
-x = solve(ml, b, maxiter = 1, tol = 1e-12)
+x = solve(ml, b, maxiter = 1, reltol = 1e-12)
 diff = x - [0.775725, -0.571202, -0.290989, -0.157001, -0.106981, 0.622652,
             -0.122318, -0.0891874, -0.0709834, 0.392621, -0.055544, -0.0507485,
             -0.0466376, 0.107175, 0.0267468, -0.0200843, -0.0282827, -0.0299929,
@@ -244,7 +241,7 @@ for (T,V) in ((Float64, Float64), (Float32,Float32),
         b = V.(b)
         c = cg(a, b, maxiter = 10)
         @test eltype(solve(ml, b)) == eltype(c)
-end    
+end
 
 end
 
@@ -276,6 +273,10 @@ end
 
 @testset "Jacobi Prolongation" begin
     test_jacobi_prolongator()
+end
+
+@testset "Cycles" begin
+    test_cycles()
 end
 
 @testset "Int32 support" begin

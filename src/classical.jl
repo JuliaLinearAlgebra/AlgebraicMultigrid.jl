@@ -24,20 +24,12 @@ function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}},
         A = _A.data
         At = A
         symmetric = true
-        @static if VERSION < v"0.7-"
-            levels = Vector{Level{TA, TA}}()
-        else
-            levels = Vector{Level{TA, Adjoint{Ti, TA}, TA}}()
-        end
+        levels = Vector{Level{TA, Adjoint{Ti, TA}, TA}}()
     else
         symmetric = false
         A = _A
         At = adjoint(A)
-        @static if VERSION < v"0.7-"
-            levels = Vector{Level{TA, TA, TA}}()
-        else
-            levels = Vector{Level{TA, Adjoint{Ti, TA}, TA}}()
-        end
+        levels = Vector{Level{TA, Adjoint{Ti, TA}, TA}}()
     end
     w = MultiLevelWorkspace(Val{bs}, eltype(A))
     residual!(w, size(A, 1))
