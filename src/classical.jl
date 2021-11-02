@@ -63,7 +63,7 @@ function direct_interpolation(At, T, splitting)
     
     Pp = rs_direct_interpolation_pass1(T, splitting)
     Px, Pj, Pp = rs_direct_interpolation_pass2(At, T, splitting, Pp)
-    R = SparseMatrixCSC(maximum(Pj), size(At, 1), Pp, Pj, Px)
+    R = SparseMatrixCSC(isempty(Pj) ?  0 : maximum(Pj), size(At, 1), Pp, Pj, Px)
     P = R'
 
     P, R
