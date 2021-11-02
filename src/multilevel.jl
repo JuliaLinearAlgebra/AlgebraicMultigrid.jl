@@ -178,6 +178,9 @@ function solve!(x, ml::MultiLevel, b::AbstractArray{T},
             __solve!(x, ml, cycle, b, lvl)
         end
         if calculate_residual
+            if verbose
+                @printf "Norm of residual at iteration %6d is %.4e\n" itr normres
+            end
             mul!(res, A, x)
             reshape(res, size(b)) .= b .- reshape(res, size(b))
             normres = norm(res)
