@@ -15,7 +15,7 @@ function ldiv!(x, p::Preconditioner, b)
     else
         x .= b
     end
-    solve!(x, p.ml, b, p.cycle, maxiter = 1, calculate_residual = false)
+    _solve!(x, p.ml, b, p.cycle, maxiter = 1, calculate_residual = false)
 end
 mul!(b, p::Preconditioner, x) = mul!(b, p.ml.levels[1].A, x)
 

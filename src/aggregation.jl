@@ -11,7 +11,7 @@ function smoothed_aggregation(A::TA,
                         max_coarse = 10,
                         diagonal_dominance = false,
                         keep = false,
-                        coarse_solver = Pinv) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
+                        coarse_solver = Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
 
     n = size(A, 1)
     # B = kron(ones(n, 1), eye(1))

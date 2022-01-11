@@ -158,7 +158,7 @@ function _solve!(x, ml::MultiLevel, b::AbstractArray{T},
                                     reltol::Real = sqrt(eps(real(eltype(b)))),
                                     verbose::Bool = false,
                                     log::Bool = false,
-                                    calculate_residual = true) where {T}
+                                    calculate_residual = true, kwargs...) where {T}
 
     A = length(ml) == 1 ? ml.final_A : ml.levels[1].A
     V = promote_type(eltype(A), eltype(b))

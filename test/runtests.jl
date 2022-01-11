@@ -120,12 +120,12 @@ fsmoother = GaussSeidel(ForwardSweep())
 A = poisson(1000)
 A = float.(A)
 ml = ruge_stuben(A)
-x = solve(ml, A * ones(1000))
+x = AlgebraicMultigrid._solve(ml, A * ones(1000))
 @test sum(abs2, x - ones(1000)) < 1e-8
 
 ml = ruge_stuben(A, presmoother = fsmoother,
                      postsmoother = fsmoother)
-x = solve(ml, A * ones(1000))
+x = AlgebraicMultigrid._solve(ml, A * ones(1000))
 @test sum(abs2, x - ones(1000)) < 1e-8
 
 
@@ -133,11 +133,11 @@ A = include("randlap.jl")
 
 ml = ruge_stuben(A, presmoother = fsmoother,
                     postsmoother = fsmoother)
-x = solve(ml, A * ones(100))
+x = AlgebraicMultigrid._solve(ml, A * ones(100))
 @test sum(abs2, x - zeros(100)) < 1e-8
 
 ml = ruge_stuben(A)
-x = solve(ml, A * ones(100))
+x = AlgebraicMultigrid._solve(ml, A * ones(100))
 @test sum(abs2, x - zeros(100)) < 1e-6
 
 
@@ -155,7 +155,7 @@ p = aspreconditioner(ml)
 b = zeros(n)
 b[1] = 1
 b[2] = -1
-x = solve(p.ml, A * ones(n), maxiter = 1, abstol = 1e-12)
+x = AlgebraicMultigrid._solve(ml, A * ones(n), maxiter = 1, abstol = 1e-12)
 diff = x - [  1.88664780e-16,   2.34982727e-16,   2.33917697e-16,
          8.77869044e-17,   7.16783490e-17,   1.43415460e-16,
          3.69199021e-17,   9.70950385e-17,   4.77034895e-17,
@@ -173,7 +173,9 @@ diff = x - [  1.88664780e-16,   2.34982727e-16,   2.33917697e-16,
         -6.76965535e-16,  -7.00643227e-16,  -6.23581397e-16,
         -7.03016682e-16]
 @test sum(abs2, diff) < 1e-8
-x = solve(p.ml, b, maxiter = 1, abstol = 1e-12)
+x = solve(A, b, RugeStubenAMG(); presmoother = smoother, 
+                                postsmoother = smoother,
+                                maxiter = 1, abstol = 1e-12)
 diff = x - [ 0.76347046, -0.5498286 , -0.2705487 , -0.15047352, -0.10248021,
         0.60292674, -0.11497073, -0.08460548, -0.06931461,  0.38230708,
        -0.055664  , -0.04854558, -0.04577031,  0.09964325,  0.01825624,
@@ -214,7 +216,7 @@ diff = x - [0.823762, -0.537478, -0.306212, -0.19359, -0.147621, 0.685002,
             0.0511691, 0.0502043, 0.0498349, 0.0498134]
 @test sum(abs2, diff) < 1e-8
 
-x = solve(ml, b, maxiter = 1, reltol = 1e-12)
+x = AlgebraicMultigrid._solve(ml, b, maxiter = 1, reltol = 1e-12)
 diff = x - [0.775725, -0.571202, -0.290989, -0.157001, -0.106981, 0.622652,
             -0.122318, -0.0891874, -0.0709834, 0.392621, -0.055544, -0.0507485,
             -0.0466376, 0.107175, 0.0267468, -0.0200843, -0.0282827, -0.0299929,
@@ -240,7 +242,7 @@ for (T,V) in ((Float64, Float64), (Float32,Float32),
         ml = smoothed_aggregation(a)
         b = V.(b)
         c = cg(a, b, maxiter = 10)
-        @test eltype(solve(ml, b)) == eltype(c)
+        @test eltype(AlgebraicMultigrid._solve(ml, b)) == eltype(c)
 end
 
 end
@@ -316,7 +318,7 @@ for f in (smoothed_aggregation, ruge_stuben)
     b = zeros(size(a,1))
     b[1] = 1
     b[2] = -1
-    @test sum(abs2, a * solve(ml, b) - b) < 1e-10
+    @test sum(abs2, a * AlgebraicMultigrid._solve(ml, b) - b) < 1e-10
     @test sum(abs2, a * cg(a, b, Pl = p, maxiter = 1000) - b) < 1e-10
 
 end
