@@ -14,7 +14,7 @@ function test_cycles()
         ml = method(A)
 
         for cycle in [AlgebraicMultigrid.V(),AlgebraicMultigrid.W(),AlgebraicMultigrid.F()]
-            x,convhist = solve(ml, b, cycle; reltol = reltol, log = true)
+            x,convhist = AlgebraicMultigrid._solve(ml, b, cycle; reltol = reltol, log = true)
 
             @debug "number of iterations for $cycle using $method: $(length(convhist))"
             @test norm(b - A*x) < reltol * norm(b)

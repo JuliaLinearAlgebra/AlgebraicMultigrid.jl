@@ -327,4 +327,4 @@ end
 X = poisson(27_000)+24.0*I
 ml = ruge_stuben(X)
 b = rand(27_000)
-@test solve(ml, b, reltol = 1e-10) ≈ X \ b rtol = 1e-10
+@test AlgebraicMultigrid._solve(ml, b, reltol = 1e-10) ≈ X \ b rtol = 1e-10
