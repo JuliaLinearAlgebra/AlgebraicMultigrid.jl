@@ -81,7 +81,7 @@ function Base.show(io::IO, ml::MultiLevel)
         @sprintf "   %2d   %10d   %10d [%5.2f%%]" length(ml.levels) + 1 size(ml.final_A, 1) nnz(ml.final_A) (100 * nnz(ml.final_A) / total_nnz)
 
     opround = round(op, digits = 3)
-    ground = round(op, digits = 3)
+    ground = round(g, digits = 3)
 
     str = """
     Multilevel Solver
