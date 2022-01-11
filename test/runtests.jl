@@ -140,9 +140,6 @@ ml = ruge_stuben(A)
 x = AlgebraicMultigrid._solve(ml, A * ones(100))
 @test sum(abs2, x - zeros(100)) < 1e-6
 
-
-
-
 end
 
 @testset "Preconditioning" begin
@@ -310,15 +307,16 @@ for sz in [10, 5, 2]
 end
 
 # Issue #46
-for f in (smoothed_aggregation, ruge_stuben)
+for f in ((smoothed_aggregation, SmoothedAggregationAMG), 
+            (ruge_stuben, RugeStubenAMG))
 
     a = load("bug.jld2")["G"]
-    ml = f(a)
+    ml = f[1](a)
     p = aspreconditioner(ml)
     b = zeros(size(a,1))
     b[1] = 1
     b[2] = -1
-    @test sum(abs2, a * AlgebraicMultigrid._solve(ml, b) - b) < 1e-10
+    @test sum(abs2, a * solve(a, b, f[2]()) - b) < 1e-10
     @test sum(abs2, a * cg(a, b, Pl = p, maxiter = 1000) - b) < 1e-10
 
 end

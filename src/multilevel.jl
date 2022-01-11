@@ -234,7 +234,6 @@ function __solve!(x, ml, cycle::Cycle, b, lvl)
     x
 end
 
-
 ### CommonSolve.jl spec
 struct AMGSolver{T}
     ml::MultiLevel
