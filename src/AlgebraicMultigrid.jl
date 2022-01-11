@@ -1,9 +1,12 @@
 module AlgebraicMultigrid
 
+using Reexport
 import IterativeSolvers: gauss_seidel!
 using LinearAlgebra
 using SparseArrays, Printf
 using Base.Threads
+@reexport import CommonSolve: solve, solve!, init
+using Reexport
 
 using LinearAlgebra: rmul!
 
@@ -29,7 +32,7 @@ export GaussSeidel, SymmetricSweep, ForwardSweep, BackwardSweep,
         JacobiProlongation
 
 include("multilevel.jl")
-export solve
+export RugeStubenAMG, SmoothedAggregationAMG
 
 include("classical.jl")
 export ruge_stuben

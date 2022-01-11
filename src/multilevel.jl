@@ -126,7 +126,7 @@ struct F <: Cycle
 end
 
 """
-    solve(ml::MultiLevel, b::AbstractArray, cycle, kwargs...)
+    _solve(ml::MultiLevel, b::AbstractArray, cycle, kwargs...)
 
 Execute multigrid cycling.
 
@@ -145,20 +145,20 @@ Keyword Arguments
 * log::Bool - return vector of residuals along with solution
 
 """
-function solve(ml::MultiLevel, b::AbstractArray, args...; kwargs...)
+function _solve(ml::MultiLevel, b::AbstractArray, args...; kwargs...)
     n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1)
     V = promote_type(eltype(ml.workspace), eltype(b))
     x = zeros(V, size(b))
-    return solve!(x, ml, b, args...; kwargs...)
+    return _solve!(x, ml, b, args...; kwargs...)
 end
-function solve!(x, ml::MultiLevel, b::AbstractArray{T},
+function _solve!(x, ml::MultiLevel, b::AbstractArray{T},
                                     cycle::Cycle = V();
                                     maxiter::Int = 100,
                                     abstol::Real = zero(real(eltype(b))),
                                     reltol::Real = sqrt(eps(real(eltype(b)))),
                                     verbose::Bool = false,
                                     log::Bool = false,
-                                    calculate_residual = true) where {T}
+                                    calculate_residual = true, kwargs...) where {T}
 
     A = length(ml) == 1 ? ml.final_A : ml.levels[1].A
     V = promote_type(eltype(A), eltype(b))
@@ -232,4 +232,29 @@ function __solve!(x, ml, cycle::Cycle, b, lvl)
     ml.postsmoother(A, x, b)
 
     x
+end
+
+### CommonSolve.jl spec
+struct AMGSolver{T}
+    ml::MultiLevel
+    b::Vector{T}
+end
+
+abstract type AMGAlg end
+
+struct RugeStubenAMG  <: AMGAlg end
+struct SmoothedAggregationAMG  <: AMGAlg end
+
+function solve(A::AbstractMatrix, b::Vector, s::AMGAlg, args...; kwargs...)
+    solt = init(s, A, b, args...; kwargs...)
+    solve!(solt, args...; kwargs...)
+end
+function init(::RugeStubenAMG, A, b, args...; kwargs...)
+    AMGSolver(ruge_stuben(A; kwargs...), b)
+end
+function init(::SmoothedAggregationAMG, A, b; kwargs...)
+    AMGSolver(smoothed_aggregation(A; kwargs...), b)
+end
+function solve!(solt::AMGSolver, args...; kwargs...) 
+    _solve(solt.ml, solt.b, args...; kwargs...)   
 end

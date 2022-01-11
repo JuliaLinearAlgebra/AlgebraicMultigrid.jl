@@ -9,6 +9,19 @@ This package lets you solve sparse linear systems using Algebraic Multigrid (AMG
 
 ## Usage
 
+### Using the CommonSolve interface
+
+This is highest level API. It internally creates the multilevel object 
+and calls the multigrid cycling `_solve`. 
+
+```julia
+A = poisson(100); 
+b = rand(100);
+solve(A, b, RugeStubenAMG(), maxiter = 1, abstol = 1e-6)
+```
+
+### Multigrid cycling
+
 ```julia
 using AlgebraicMultigrid
 
@@ -32,7 +45,7 @@ ml = ruge_stuben(A) # Construct a Ruge-Stuben solver
 #     8            7           19 [ 0.32%]
 
 
-solve(ml, A * ones(1000)) # should return ones(1000)
+AlgebraicMultigrid._solve(ml, A * ones(1000)) # should return ones(1000)
 ```
 
 ### As a Preconditioner
