@@ -1,7 +1,6 @@
 module AlgebraicMultigrid
 
 using Reexport
-import IterativeSolvers: gauss_seidel!
 using LinearAlgebra
 using SparseArrays, Printf
 using Base.Threads
