@@ -1,11 +1,3 @@
-struct Solver{S,T,P,PS}
-    strength::S
-    CF::T
-    presmoother::P
-    postsmoother::PS
-    max_levels::Int
-    max_coarse::Int
-end
 
 function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}}, 
                 ::Type{Val{bs}}=Val{1};
@@ -17,18 +9,13 @@ function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}},
                 max_coarse = 10,
                 coarse_solver = Pinv, kwargs...) where {Ti,Tv,bs,TA<:SparseMatrixCSC{Ti,Tv}}
 
-    s = Solver(strength, CF, presmoother,
-                postsmoother, max_levels, max_levels)
-
     if _A isa Symmetric && Ti <: Real || _A isa Hermitian
         A = _A.data
-        At = A
         symmetric = true
         levels = Vector{Level{TA, Adjoint{Ti, TA}, TA}}()
     else
         symmetric = false
         A = _A
-        At = adjoint(A)
         levels = Vector{Level{TA, Adjoint{Ti, TA}, TA}}()
     end
     w = MultiLevelWorkspace(Val{bs}, eltype(A))
@@ -54,7 +41,7 @@ function extend_heirarchy!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, symm
     splitting = CF(S)
     P, R = direct_interpolation(At, T, splitting)
     push!(levels, Level(A, P, R))
-    A = R * A * P
+    return R * A * P
 end
 
 function direct_interpolation(At, T, splitting)

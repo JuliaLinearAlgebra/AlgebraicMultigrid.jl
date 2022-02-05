@@ -22,4 +22,3 @@ mul!(b, p::Preconditioner, x) = mul!(b, p.ml.levels[1].A, x)
 function \(p::Preconditioner, b)
     ldiv!(similar(b), p, b)
 end
-*(p::Preconditioner, b) = p.ml.levels[1].A * x
