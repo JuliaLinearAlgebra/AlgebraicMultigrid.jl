@@ -9,7 +9,7 @@ function (c::Classical)(At::SparseMatrixCSC{Tv,Ti}) where {Ti,Tv}
     θ = c.θ
 
     m, n = size(At)
-    T = deepcopy(At)
+    T = copy(At)
 
     for i = 1:n
         _m = find_max_off_diag(T, i)
@@ -83,7 +83,7 @@ function (s::SymmetricStrength{T})(A, bsr_flag = false) where {T}
                     A.colptr, A.rowval, ones(eltype(A), size(A.rowval)))
         return S, S
     else
-        S = deepcopy(A)
+        S = copy(A)
     end
     n = size(A, 1)
     diags = Vector{eltype(A)}(undef, n)
