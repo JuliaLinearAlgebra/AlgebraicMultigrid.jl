@@ -9,7 +9,7 @@ function (c::Classical)(At::SparseMatrixCSC{Tv,Ti}) where {Ti,Tv}
     θ = c.θ
 
     m, n = size(At)
-    T = copy(At)
+    T = real(copy(At))
 
     for i = 1:n
         _m = find_max_off_diag(T, i)
@@ -37,7 +37,7 @@ function (c::Classical)(At::SparseMatrixCSC{Tv,Ti}) where {Ti,Tv}
 end
 
 function find_max_off_diag(A, i)
-    m = zero(eltype(A))
+    m = real(zero(eltype(A)))
     for j in nzrange(A, i)
         row = A.rowval[j]
         val = A.nzval[j]
