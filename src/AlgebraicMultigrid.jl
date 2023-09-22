@@ -2,17 +2,12 @@ module AlgebraicMultigrid
 
 using Reexport
 using LinearAlgebra
+using LinearSolve
 using SparseArrays, Printf
-using Base.Threads
 @reexport import CommonSolve: solve, solve!, init
 using Reexport
 
 using LinearAlgebra: rmul!
-
-# const mul! = A_mul_B!
-
-const MT = false
-const AMG = AlgebraicMultigrid
 
 include("utils.jl")
 export approximate_spectral_radius
