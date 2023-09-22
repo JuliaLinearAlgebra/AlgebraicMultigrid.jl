@@ -1,6 +1,6 @@
 using SparseArrays, DelimitedFiles, Random
 using Test, LinearAlgebra
-using IterativeSolvers, AlgebraicMultigrid
+using IterativeSolvers, LinearSolve, AlgebraicMultigrid
 import AlgebraicMultigrid: Pinv, Classical
 using JLD2
 using FileIO
@@ -128,6 +128,9 @@ ml = ruge_stuben(A, presmoother = fsmoother,
 x = AlgebraicMultigrid._solve(ml, A * ones(1000))
 @test sum(abs2, x - ones(1000)) < 1e-8
 
+ml = ruge_stuben(A, coarse_solver=AlgebraicMultigrid.LinearSolveWrapper(UMFPACKFactorization()))
+x = AlgebraicMultigrid._solve(ml, A * ones(1000))
+@test sum(abs2, x - ones(1000)) < 1e-7
 
 A = include("randlap.jl")
 

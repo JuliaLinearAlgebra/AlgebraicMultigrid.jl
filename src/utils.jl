@@ -99,7 +99,6 @@ end
 find_breakdown(::Type{Float64}) = eps(Float64) * 10^6
 find_breakdown(::Type{Float32}) = eps(Float64) * 10^3
 
-using Base.Threads
 #=function mul!(α::Number, A::SparseMatrixCSC, B::StridedVecOrMat, β::Number, C::StridedVecOrMat)
     A.n == size(B, 1) || throw(DimensionMismatch())
     A.m == size(C, 1) || throw(DimensionMismatch())
