@@ -24,13 +24,17 @@ jobs:
           - windows-latest
         arch:
           - x64
+          - x86
+        exclude:
+          - os: macos-latest
+            arch: x86        
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         env:
           cache-name: cache-artifacts
         with:
@@ -46,4 +50,5 @@ jobs:
       - uses: codecov/codecov-action@v4
         with:
           file: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
   
