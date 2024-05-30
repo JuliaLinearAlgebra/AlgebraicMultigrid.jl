@@ -206,3 +206,43 @@ function scale_rows!(ret, S, v)
     ret
 end
 scale_rows(S, v) = scale_rows!(deepcopy(S), S,  v)
+
+struct SOR{S} <: Smoother
+    ω::Float64
+    sweep::S
+    iter::Int
+end
+
+SOR(ω; iter = 1) = SOR(ω, SymmetricSweep(), iter)
+SOR(ω, f::ForwardSweep) = SOR(ω, f, 1)
+SOR(ω, b::BackwardSweep) = SOR(ω, b, 1)
+SOR(ω, s::SymmetricSweep) = SOR(ω, s, 1)
+
+function (sor::SOR{S})(A, x, b) where {S<:Sweep}
+    for i in 1:sor.iter
+        if S === ForwardSweep || S === SymmetricSweep
+            sor_step!(A, b, x, sor.ω, 1, 1, size(A, 1))
+        end
+        if S === BackwardSweep || S === SymmetricSweep
+            sor_step!(A, b, x, sor.ω, size(A, 1), -1, 1)
+        end
+    end
+end
+
+function sor_step!(A, b, x, ω, start, step, stop)
+    n = size(A, 1)
+    z = zero(eltype(A))
+    @inbounds for col in 1:size(x, 2)
+        for i in start:step:stop
+            rsum = z
+            d = z
+            for j in nzrange(A, i)
+                row = A.rowval[j]
+                val = A.nzval[j]
+                d = ifelse(i == row, val, d)
+                rsum += ifelse(i == row, z, val * x[row, col])
+            end
+            x[i, col] = ifelse(d == 0, x[i, col], (1 - ω) * x[i, col] + (ω / d) * (b[i, col] - rsum))
+        end
+    end
+end
