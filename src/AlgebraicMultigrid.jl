@@ -3,7 +3,9 @@ module AlgebraicMultigrid
 using Reexport
 using LinearAlgebra
 using LinearSolve
-using SparseArrays, Printf
+using SparseArrays
+using SparseArrays: AbstractSparseMatrixCSC
+using Printf
 @reexport import CommonSolve: solve, solve!, init
 using Reexport
 
@@ -39,5 +41,8 @@ export fit_candidates, smoothed_aggregation
 
 include("preconditioner.jl")
 export aspreconditioner
+
+include("precs.jl")
+export SmoothedAggregationPreconBuilder, RugeStubenPreconBuilder
 
 end # module

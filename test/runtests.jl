@@ -331,3 +331,26 @@ X = poisson(27_000)+24.0*I
 ml = ruge_stuben(X)
 b = rand(27_000)
 @test AlgebraicMultigrid._solve(ml, b, reltol = 1e-10) ≈ X \ b rtol = 1e-10
+
+
+
+
+# LinearSolve precs interface
+@testset "LinearSolvePrecs" begin
+
+for sz in [ (10,10), (20,20), (50,50)]
+    A = poisson(sz)
+    u0= ones(size(A,1))
+    b=A*u0
+
+    prob = LinearProblem(A, b)
+    strategy = KrylovJL_CG(precs = RugeStubenPreconBuilder())
+    @test solve(prob, strategy, atol=1.0e-14) ≈ u0 rtol = 1.0e-8
+
+
+    strategy = KrylovJL_CG(precs = SmoothedAggregationPreconBuilder())
+    @test solve(prob, strategy, atol=1.0e-14) ≈ u0 rtol = 1.0e-8
+    
+end
+
+end
