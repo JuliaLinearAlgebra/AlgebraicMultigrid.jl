@@ -56,6 +56,26 @@ p = aspreconditioner(ml)
 c = cg(A, A*ones(1000), Pl = p)
 ```
 
+
+### As a preconditioner with LinearSolve.jl
+
+`RugeStubenPreconBuilder` and `SmoothedAggregationPreconBuilder` work with the 
+[`precs` API](https://docs.sciml.ai/LinearSolve/stable/basics/Preconditioners/#Specifying-Preconditioners)
+of LinearSolve.jl
+
+```julia
+A = poisson( (100,100) )
+u0= rand(size(A,1))
+b=A*u0
+
+prob = LinearProblem(A, b)
+strategy = KrylovJL_CG(precs = RugeStubenPreconBuilder())
+sol = solve(prob, strategy, atol=1.0e-14)
+
+strategy = KrylovJL_CG(precs = SmoothedAggregationPreconBuilder())
+sol = solve(prob, strategy, atol=1.0e-14)
+```
+
 ## Features and Roadmap
 
 This package currently supports:
