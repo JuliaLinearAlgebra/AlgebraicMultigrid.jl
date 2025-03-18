@@ -25,7 +25,7 @@ export poisson
 
 include("smoother.jl")
 export GaussSeidel, SymmetricSweep, ForwardSweep, BackwardSweep,
-        JacobiProlongation
+        JacobiProlongation, SOR
 
 include("multilevel.jl")
 export RugeStubenAMG, SmoothedAggregationAMG
