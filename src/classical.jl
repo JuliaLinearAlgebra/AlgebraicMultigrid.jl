@@ -45,6 +45,7 @@ function extend_heirarchy!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, symm
 end
 
 function direct_interpolation(At, T, splitting)
+    T = typeof(At)(T)
     fill!(T.nzval, eltype(At)(1))
     T .= At .* T
     
@@ -99,7 +100,7 @@ function rs_direct_interpolation_pass2(At::SparseMatrixCSC{Tv,Ti},
                 row = T.rowval[j]
                 sval = T.nzval[j]
                 if splitting[row] == C_NODE
-                    if sval < 0
+                    if real(sval) < 0
                         sum_strong_neg += sval
                     else
                         sum_strong_pos += sval
@@ -115,7 +116,7 @@ function rs_direct_interpolation_pass2(At::SparseMatrixCSC{Tv,Ti},
                 if row == i
                     diag += aval
                 else
-                    if aval < 0
+                    if real(aval) < 0
                         sum_all_neg += aval
                     else
                         sum_all_pos += aval
@@ -125,7 +126,7 @@ function rs_direct_interpolation_pass2(At::SparseMatrixCSC{Tv,Ti},
 
             if sum_strong_pos == 0
                 beta = zero(diag)
-                if diag >= 0
+                if real(diag) >= 0
                     diag += sum_all_pos
                 end
             else
@@ -134,14 +135,14 @@ function rs_direct_interpolation_pass2(At::SparseMatrixCSC{Tv,Ti},
 
             if sum_strong_neg == 0
                 alpha = zero(diag)
-                if diag < 0
+                if real(diag) < 0
                     diag += sum_all_neg
                 end
             else
                 alpha = sum_all_neg / sum_strong_neg
             end
 
-            if isapprox(diag, 0, atol=eps(Tv))
+            if isapprox(real(diag), 0, atol=eps(real(Tv)))
                 neg_coeff = Tv(0)
                 pos_coeff = Tv(0)
             else
@@ -155,7 +156,7 @@ function rs_direct_interpolation_pass2(At::SparseMatrixCSC{Tv,Ti},
                 sval = T.nzval[j]
                 if splitting[row] == C_NODE
                     Bj[nnz] = row
-                    if sval < 0
+                    if real(sval) < 0
                         Bx[nnz] = abs(neg_coeff * sval)
                     else
                         Bx[nnz] = abs(pos_coeff * sval)
