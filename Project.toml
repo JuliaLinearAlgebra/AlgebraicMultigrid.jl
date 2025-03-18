@@ -1,6 +1,6 @@
 name = "AlgebraicMultigrid"
 uuid = "2169fc97-5a83-5252-b627-83903c6c433c"
-version = "0.6.0"
+version = "0.7.0"
 
 [deps]
 CommonSolve = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
