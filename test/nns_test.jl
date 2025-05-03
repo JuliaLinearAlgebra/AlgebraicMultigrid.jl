@@ -108,10 +108,27 @@ function assemble_global!(K, dh, cellvalues, C)
     return K
 end
 
+function create_nns(dh)
+    Ndof = ndofs(dh)
+    grid = dh.grid
+    B = zeros(Float64, Ndof, 3)
+    B[1:2:end,1] .= 1 # x - translation
+    B[2:2:end,2] .= 1 # y - translation
+
+    # in-plane rotation (x,y) → (-y,x)
+    coords = reduce(hcat,grid.nodes .|> (n -> n.x |> collect))' # convert nodes to 2d array
+    y = coords[:,2]
+    x = coords[:,1]
+    B[1:2:end,3] .= -y
+    B[2:2:end,3] .= x
+    return B
+end
+
 A = allocate_matrix(dh)
 assemble_global!(A, dh, cellvalues, C);
 
 b = zeros(ndofs(dh))
+B  = create_nns(dh)
 assemble_external_forces!(b, dh, getfacetset(grid, "top"), facetvalues, traction);
 
 apply!(A, b, ch)
@@ -120,3 +137,20 @@ x = A \ b;
 x_amg,residuals = solve(A, b, SmoothedAggregationAMG();log=true)
 
 #ml = smoothed_aggregation(A)
+@test A * x_amg ≈ b atol=1e-6
+
+## show some results
+ml = smoothed_aggregation(A)
+println("Number of iterations: $(length(residuals))")
+using Printf
+
+# assuming `residuals` is your Vector of floats
+for (i, r) in enumerate(residuals)
+    @printf("residual at iteration %2d: %6.2e\n", i-1, r)
+end
+
+## Write for python
+using DelimitedFiles, MatrixMarket
+mmwrite("A.mtx", A) 
+writedlm("b.csv", b, ',')
+writedlm("B.csv", B, ',')
