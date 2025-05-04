@@ -1,4 +1,4 @@
-function smoothed_aggregation(A::TA, 
+function smoothed_aggregation(A::TA, B = nothing,
                         ::Type{Val{bs}}=Val{1};
                         symmetry = HermitianSymmetry(),
                         strength = SymmetricStrength(),
@@ -14,8 +14,8 @@ function smoothed_aggregation(A::TA,
                         coarse_solver = Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
 
     n = size(A, 1)
-    # B = kron(ones(n, 1), eye(1))
-    B = ones(T,n)
+    B = isnothing(B) ? ones(T,n) : B
+    @assert size(A, 1) == size(B, 1)
 
     #=max_levels, max_coarse, strength =
         levelize_strength_or_aggregation(max_levels, max_coarse, strength)
@@ -91,56 +91,66 @@ construct_R(::HermitianSymmetry, P) = P'
 function fit_candidates(AggOp, B, tol = 1e-10)
 
     A = adjoint(AggOp)
-    n_fine, n_coarse = size(A)
-    n_col = n_coarse
+    n_fine, m      = size(B)       
+    n_fine2, n_agg = size(A)     
+    @assert n_fine2 == n_fine
 
-    R = zeros(eltype(B), n_coarse)
-    Qx = zeros(eltype(B), nnz(A))
-    # copy!(Qx, B)
-    for i = 1:size(Qx, 1)
-        Qx[i] = B[i]
-    end
-    # copy!(A.nzval, B)
-    for i = 1:n_col
-        for j in nzrange(A,i)
-            row = A.rowval[j]
-            A.nzval[j] = B[row]
+    n_coarse = m * n_agg
+    T = eltype(B)
+    Qs = spzeros(T, n_fine, n_coarse)
+    R  = zeros(T, n_coarse, m)
+
+    for agg in 1:n_agg
+        # fine‐node indices in this aggregate
+        rows = A.rowval[A.colptr[agg] : A.colptr[agg+1]-1]
+
+        # local near‐nullspace block (length(rows)×m)
+        M = @view B[rows, :]
+
+        # thin QR ⇒ Qj(length(rows)×m), Rj(m×m)
+        Qj, Rj = qr(M)
+
+        # offset in global Qs/R
+        offset = (agg - 1) * m
+
+        # scatter dense Qj into sparse Qs
+        for local_i in 1:length(rows), local_j in 1:m
+            val = Qj[local_i, local_j]
+            if abs(val) >= tol
+                Qs[rows[local_i], offset + local_j] = val
+            end
         end
-    end
-    k = 1
-    for i = 1:n_col
-        norm_i = norm_col(A, Qx, i)
-        threshold_i = tol * norm_i
-        if norm_i > threshold_i
-            scale = 1 / norm_i
-            R[i] = norm_i
-        else
-            scale = 0
-            R[i] = 0
-        end
-        for j in nzrange(A, i)
-            row = A.rowval[j]
-            # Qx[row] *= scale
-            #@show k
-            # Qx[k] *= scale
-            # k += 1
-            A.nzval[j] *= scale
-        end
+        dropzeros!(Qs)
+        # stack Rj into R
+        R[offset+1 : offset+m, :] .= Rj
     end
 
-    # SparseMatrixCSC(size(A)..., A.colptr, A.rowval, Qx), R
-    A, R
+    return Qs, R
 end
-function norm_col(A, Qx, i)
-    s = zero(eltype(A))
-    for j in nzrange(A, i)
-        if A.rowval[j] > length(Qx)
-            val = 1
-        else
-            val = Qx[A.rowval[j]]
+
+function qr(A, tol = 1e-10)
+    T = eltype(A)
+    m, n = size(A)
+    Q = similar(A)               # m×n, will hold the orthonormal vectors
+    R = zeros(T, n, n)           # n×n upper triangular
+
+    for j in 1:n
+        # start with the j-th column of A
+        v = @view A[:, j]              # creates a copy of the column
+
+        # subtract off components along previously computed q_i
+        for i in 1:j-1
+            q = @view Q[:,i] 
+            r_ij = q ⋅ v
+            R[i, j] = r_ij > tol ? r_ij : zero(T)
+            v = v -  R[i, j] * q
         end
-        # val = A.nzval[A.rowval[j]]
-        s += val*val
+
+        # normalize to get q_j
+        R[j, j] = norm(v)
+        @assert R[j, j] > tol     "Matrix is rank-deficient at column $j"
+        Q[:, j] = v / R[j, j]
     end
-    sqrt(s)
+
+    return Q, R
 end

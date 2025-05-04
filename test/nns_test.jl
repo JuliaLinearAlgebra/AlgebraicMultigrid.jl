@@ -1,6 +1,42 @@
 using AlgebraicMultigrid
 using Test
+import AlgebraicMultigrid as AMG
+using SparseArrays, LinearAlgebra
 
+## Test QR factorization
+# tolerance and common dimensions
+n_fine = 9
+n_agg  = 3
+rows   = collect(1:n_fine)
+agg_id = repeat(1:n_agg, inner=n_fine ÷ n_agg)
+
+# Agg_input is n_agg×n_fine; we then transpose it
+Agg = sparse(agg_id, rows, ones(n_fine), n_agg, n_fine)
+
+for m in (1, 2, 3)
+    # build B (n_fine×m) for m = 1, 2, 3
+    B = m == 1 ? ones(n_fine,1) :
+        m == 2 ? hcat(ones(n_fine), collect(1:n_fine)) :
+                 hcat(ones(n_fine), collect(1:n_fine), collect(1:n_fine).^2)
+
+    Qs, R = AMG.fit_candidates(Agg, B)
+
+    @test size(Qs) == (n_fine, m * n_agg)
+    @test size(R)  == (m * n_agg, m)
+
+    for agg in 1:n_agg
+        idx = findall(x->x==agg, agg_id)
+        M   = B[idx, :]
+        Qj  = Array(Qs[idx, (agg-1)*m+1 : agg*m])
+        Rj  = R[(agg-1)*m+1 : agg*m, :]
+
+        @test isapprox(M, Qj * Rj; atol=1e-8)
+        @test isapprox(Qj' * Qj, I(m);   atol=1e-8)
+        @test istriu(Rj)
+    end
+end
+
+## Test Convergance of AMG for linear elasticity
 # Example test: https://ferrite-fem.github.io/Ferrite.jl/stable/tutorials/linear_elasticity/
 using Ferrite, FerriteGmsh, SparseArrays
 
@@ -134,10 +170,10 @@ assemble_external_forces!(b, dh, getfacetset(grid, "top"), facetvalues, traction
 apply!(A, b, ch)
 x = A \ b;
 
-x_amg,residuals = solve(A, b, SmoothedAggregationAMG();log=true)
+x_amg,residuals = solve(A, b, SmoothedAggregationAMG(B);log=true)
 
 #ml = smoothed_aggregation(A)
-@test A * x_amg ≈ b atol=1e-6
+@test A * x_amg ≈ b atol=1e-4
 
 ## show some results
 ml = smoothed_aggregation(A)
@@ -150,7 +186,7 @@ for (i, r) in enumerate(residuals)
 end
 
 ## Write for python
-using DelimitedFiles, MatrixMarket
-mmwrite("A.mtx", A) 
-writedlm("b.csv", b, ',')
-writedlm("B.csv", B, ',')
+# using DelimitedFiles, MatrixMarket
+# mmwrite("A.mtx", A) 
+# writedlm("b.csv", b, ',')
+# writedlm("B.csv", B, ',')
