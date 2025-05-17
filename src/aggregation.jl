@@ -14,7 +14,7 @@ function smoothed_aggregation(A::TA, B = nothing,
                         coarse_solver = Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
 
     n = size(A, 1)
-    B = isnothing(B) ? ones(T,n) : B
+    B = isnothing(B) ? ones(T,n,1) : B
     @assert size(A, 1) == size(B, 1)
 
     #=max_levels, max_coarse, strength =
@@ -91,10 +91,11 @@ construct_R(::HermitianSymmetry, P) = P'
 function fit_candidates(AggOp, B, tol = 1e-10)
 
     A = adjoint(AggOp)
+    @show AggOp |> size
     n_fine, m      = size(B)       
     n_fine2, n_agg = size(A)     
     @assert n_fine2 == n_fine
-
+    
     n_coarse = m * n_agg
     T = eltype(B)
     Qs = spzeros(T, n_fine, n_coarse)
