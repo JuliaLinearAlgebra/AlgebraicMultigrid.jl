@@ -91,7 +91,6 @@ construct_R(::HermitianSymmetry, P) = P'
 function fit_candidates(AggOp, B, tol = 1e-10)
 
     A = adjoint(AggOp)
-    @show AggOp |> size
     n_fine, m      = size(B)       
     n_fine2, n_agg = size(A)     
     @assert n_fine2 == n_fine
