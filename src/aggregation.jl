@@ -64,7 +64,7 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
     else
         S, _T = strength(adjoint(A), bsr_flag)
     end
-
+    
     # Aggregation operator
     AggOp = aggregate(S)
     # b = zeros(eltype(A), size(A, 1))

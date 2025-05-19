@@ -170,30 +170,8 @@ assemble_external_forces!(b, dh, getfacetset(grid, "top"), facetvalues, traction
 apply!(A, b, ch)
 x = A \ b;
 
-x_amg,residuals = solve(A, b, SmoothedAggregationAMG(B);log=true);
+x_amg,residuals = solve(A, b, SmoothedAggregationAMG(B);log=true,reltol = 1e-10);
 
 #ml = smoothed_aggregation(A)
-@test A * x_amg ≈ b atol=1e-4
+@test A * x_amg ≈ b
 
-## show some results
-ml = smoothed_aggregation(A,B)
-println("Number of iterations: $(length(residuals))")
-using Printf
-
-# assuming `residuals` is your Vector of floats
-for (i, r) in enumerate(residuals)
-    @printf("residual at iteration %2d: %6.2e\n", i-1, r)
-end
-
-## Write for python
-# using DelimitedFiles, MatrixMarket
-# mmwrite("A.mtx", A) 
-# writedlm("b.csv", b, ',')
-# writedlm("B_nns.csv", B, ',')
-grid
-reduce(hcat,grid.nodes .|> (n -> n.x |> collect))'
-E2V = reduce(hcat, grid.cells .|> (c -> c.nodes |> collect) )'
-V = reduce(hcat, grid.nodes .|> (n -> n.x |> collect))'
-
-writedlm("E2V.csv", E2V, ',')
-writedlm("V.csv", V, ',')
