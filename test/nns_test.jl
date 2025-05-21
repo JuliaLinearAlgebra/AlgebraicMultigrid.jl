@@ -4,81 +4,67 @@ import AlgebraicMultigrid as AMG
 using SparseArrays, LinearAlgebra
 
 ## Test QR factorization
-# tolerance and common dimensions
-n_fine = 9
-n_agg  = 3
-rows   = collect(1:n_fine)
-agg_id = repeat(1:n_agg, inner=n_fine ÷ n_agg)
+@testset "fit_candidates Unit tests" begin
+    cases = Vector{Tuple{SparseMatrixCSC{Float64,Int}, Matrix{Float64}}}()
 
-# Agg_input is n_agg×n_fine; we then transpose it
-Agg = sparse(agg_id, rows, ones(n_fine), n_agg, n_fine)
+    # 1. Aggregates include all dofs, one candidate
+    push!(cases, (
+        sparse([1,2,3,4,5], [1,1,1,2,2], ones(5), 5, 2),
+        ones(5, 1)
+    ))
+    push!(cases, (
+        sparse([1,2,3,4,5], [2,2,1,1,1], ones(5), 5, 2),
+        ones(5, 1)
+    ))
+    push!(cases, (
+        sparse([1,2,3,4,5,6,7,8,9],
+               repeat([1,2,3], inner=3),
+               ones(9), 9, 3),
+        ones(9, 1)
+    ))
+    push!(cases, (
+        sparse([1,2,3,4,5,6,7,8,9], [3,2,1,1,2,3,2,1,3],
+               ones(9), 9, 3),
+        reshape(Float64.(0:8), 9, 1)
+    ))
 
-for m in (1, 2, 3)
-    # build B (n_fine×m) for m = 1, 2, 3
-    B = m == 1 ? ones(n_fine,1) :
-        m == 2 ? hcat(ones(n_fine), collect(1:n_fine)) :
-                 hcat(ones(n_fine), collect(1:n_fine), collect(1:n_fine).^2)
+    # 2. Aggregates include all dofs, two candidates
+    push!(cases, (
+        sparse([1,2,3,4], [1,1,2,2], ones(4), 4, 2),
+        hcat(ones(4), collect(0:3))
+    ))
+    push!(cases, (
+        sparse([1,2,3,4,5,6,7,8,9], repeat([1,2,3], inner=3), ones(9), 9, 3),
+        hcat(ones(9), collect(0:8))
+    ))
+    push!(cases, (
+        sparse([1,2,3,4,5,6,7,8,9], [1,1,2,2,3,3,4,4,4], ones(9), 9, 4),
+        hcat(ones(9), collect(0:8))
+    ))
 
-    Qs, R = AMG.fit_candidates(Agg, B)
+    # 3. Small norms
+    push!(cases, (
+        sparse([1,2,3,4], [1,1,2,2], ones(4), 4, 2),
+        hcat(ones(4), 1e-20 .* collect(0:3))
+    ))
+    push!(cases, (
+        sparse([1,2,3,4], [1,1,2,2], ones(4), 4, 2),
+        1e-20 .* hcat(ones(4), collect(0:3))
+    ))
 
-    @test size(Qs) == (n_fine, m * n_agg)
-    @test size(R)  == (m * n_agg, m)
-
-    for agg in 1:n_agg
-        idx = findall(x->x==agg, agg_id)
-        M   = B[idx, :]
-        Qj  = Array(Qs[idx, (agg-1)*m+1 : agg*m])
-        Rj  = R[(agg-1)*m+1 : agg*m, :]
-
-        @test isapprox(M, Qj * Rj; atol=1e-8)
-        @test isapprox(Qj' * Qj, I(m);   atol=1e-8)
-        @test istriu(Rj)
+    # Run tests
+    for (AggOp, fine) in cases
+        # mask dofs not in aggregation
+        for i in 1:size(AggOp,1)
+            if nnz(AggOp[i, :]) == 0
+                fine[i, :] .= 0.0
+            end
+        end
+        Q, R = fit_candidates(AggOp |> adjoint, fine)
+        # fit exactly and via projection
+        @test fine ≈ Q * R  
+        @test fine ≈ Q * (Q' * fine) 
     end
-end
-
-@testset "QR examples tests" begin
-    # Example 1: four nodes, two aggregates, constant vector
-    AggOp = sparse([1,2,3,4], [1,1,2,2], [1,1,1,1], 4, 2) |> adjoint
-    B1 = ones(4,1)
-    Q1, R1 = fit_candidates(AggOp, B1)
-    Q1a = [0.70710678 0.0;
-            0.70710678 0.0;
-            0.0        0.70710678;
-            0.0        0.70710678]
-    R1a = [1.41421356;
-           1.41421356]
-    @test Q1 ≈ Q1a
-    @test R1 ≈ R1a
-
-    # Example 2: constant vector + linear function
-    B2 = Float64.([1 0;
-          1 1;
-          1 2;
-          1 3])
-    Q2, R2 = fit_candidates(AggOp, B2)
-    Q2a = [ 0.70710678 -0.70710678  0.0         0.0;
-            0.70710678  0.70710678  0.0         0.0;
-            0.0         0.0         0.70710678 -0.70710678;
-            0.0         0.0         0.70710678  0.70710678 ]
-    R2a = [1.41421356 0.70710678;
-           0.0        0.70710678;
-           1.41421356 3.53553391;
-           0.0        0.70710678]
-    @test Q2 ≈ Q2a
-    @test R2 ≈ R2a
-
-    # Example 3: aggregation excludes third node
-    AggOp3 = sparse([1,2,4], [1,1,2], [1,1,1], 4, 2) |> adjoint
-    B3 = ones(4,1)
-    Q3, R3 = fit_candidates(AggOp3, B3)
-    Q3a = [0.70710678 0.0;
-           0.70710678 0.0;
-           0.0        0.0;
-           0.0        1.0]
-    R3a = [1.41421356;
-           1.0]
-    @test Q3 ≈ Q3a
-    @test R3 ≈ R3a
 end
 
 ## Test Convergance of AMG for linear elasticity
@@ -217,32 +203,5 @@ x = A \ b;
 
 x_amg,residuals = solve(A, b, SmoothedAggregationAMG(B);log=true,reltol = 1e-10);
 
-#ml = smoothed_aggregation(A)
+ml = smoothed_aggregation(A)
 @test A * x_amg ≈ b
-
-
-
-## DEBUG
-
-ml = smoothed_aggregation(A,B)
-aggregate = StandardAggregation()
-improve_candidates = GaussSeidel(iter=4)
-
-
-
-strength = SymmetricStrength()
-S , _= strength(A, false)
-AggOp = aggregate(S)
-b = zeros(size(A,1))
-improve_candidates(A, B, b)
-T, B = fit_candidates(AggOp, B)
-
-
-
-using DelimitedFiles
-
-
-
-# write with comma delimiter
-#writedlm("B_nns.csv", B, ',')
-B_py = readdlm("B_nns_1.csv", ',', Float64)

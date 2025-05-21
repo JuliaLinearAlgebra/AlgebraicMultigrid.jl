@@ -14,7 +14,7 @@ function smoothed_aggregation(A::TA, _B = nothing,
                         coarse_solver = Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
 
     n = size(A, 1)
-    B = isnothing(B) ? ones(T,n,1) : copy(_B)
+    B = isnothing(_B) ? ones(T,n,1) : copy(_B)
     @assert size(A, 1) == size(B, 1)
 
     #=max_levels, max_coarse, strength =
@@ -88,32 +88,28 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
 end
 construct_R(::HermitianSymmetry, P) = P'
 
-function fit_candidates(AggOp, B, tol = 1e-10)
-
+function fit_candidates(AggOp, B; tol = 1e-10)
     A = adjoint(AggOp)
-    n_fine, m      = size(B)       
-    n_fine2, n_agg = size(A)     
+    n_fine, m      = size(B)
+    n_fine2, n_agg = size(A)
     @assert n_fine2 == n_fine
-    
+
     n_coarse = m * n_agg
     T = eltype(B)
     Qs = spzeros(T, n_fine, n_coarse)
     R  = zeros(T, n_coarse, m)
 
     for agg in 1:n_agg
-        # fine‐node indices in this aggregate
         rows = A.rowval[A.colptr[agg] : A.colptr[agg+1]-1]
+        M = @view B[rows, :]     # size(rows) × m
 
-        # local near‐nullspace block (length(rows)×m)
-        M = @view B[rows, :]
+        F  = qr(M)                 
+        Qfull = Matrix(F.Q)                      
+        Qj = Qfull[:, 1:m]                       
+        Rj = F.R                                 
 
-        # thin QR ⇒ Qj(length(rows)×m), Rj(m×m)
-        Qj, Rj = qr(M)
-
-        # offset in global Qs/R
         offset = (agg - 1) * m
 
-        # scatter dense Qj into sparse Qs
         for local_i in 1:length(rows), local_j in 1:m
             val = Qj[local_i, local_j]
             if abs(val) >= tol
@@ -121,36 +117,9 @@ function fit_candidates(AggOp, B, tol = 1e-10)
             end
         end
         dropzeros!(Qs)
-        # stack Rj into R
+
         R[offset+1 : offset+m, :] .= Rj
     end
 
     return Qs, R
-end
-
-function qr(A, tol = 1e-10)
-    T = eltype(A)
-    m, n = size(A)
-    Q = similar(A)               # m×n, will hold the orthonormal vectors
-    R = zeros(T, n, n)           # n×n upper triangular
-
-    for j in 1:n
-        # start with the j-th column of A
-        v = @view A[:, j]              # creates a copy of the column
-
-        # subtract off components along previously computed q_i
-        for i in 1:j-1
-            q = @view Q[:,i] 
-            r_ij = q ⋅ v
-            R[i, j] = r_ij > tol ? r_ij : zero(T)
-            v = v -  R[i, j] * q
-        end
-
-        # normalize to get q_j
-        R[j, j] = norm(v)
-        @assert R[j, j] > tol     "Matrix is rank-deficient at column $j"
-        Q[:, j] = v / R[j, j]
-    end
-
-    return Q, R
 end
