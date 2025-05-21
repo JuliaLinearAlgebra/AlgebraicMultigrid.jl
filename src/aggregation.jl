@@ -1,4 +1,4 @@
-function smoothed_aggregation(A::TA, B = nothing,
+function smoothed_aggregation(A::TA, _B = nothing,
                         ::Type{Val{bs}}=Val{1};
                         symmetry = HermitianSymmetry(),
                         strength = SymmetricStrength(),
@@ -14,7 +14,7 @@ function smoothed_aggregation(A::TA, B = nothing,
                         coarse_solver = Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
 
     n = size(A, 1)
-    B = isnothing(B) ? ones(T,n,1) : B
+    B = isnothing(B) ? ones(T,n,1) : copy(_B)
     @assert size(A, 1) == size(B, 1)
 
     #=max_levels, max_coarse, strength =

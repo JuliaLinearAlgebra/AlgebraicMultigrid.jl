@@ -36,6 +36,51 @@ for m in (1, 2, 3)
     end
 end
 
+@testset "QR examples tests" begin
+    # Example 1: four nodes, two aggregates, constant vector
+    AggOp = sparse([1,2,3,4], [1,1,2,2], [1,1,1,1], 4, 2) |> adjoint
+    B1 = ones(4,1)
+    Q1, R1 = fit_candidates(AggOp, B1)
+    Q1a = [0.70710678 0.0;
+            0.70710678 0.0;
+            0.0        0.70710678;
+            0.0        0.70710678]
+    R1a = [1.41421356;
+           1.41421356]
+    @test Q1 ≈ Q1a
+    @test R1 ≈ R1a
+
+    # Example 2: constant vector + linear function
+    B2 = Float64.([1 0;
+          1 1;
+          1 2;
+          1 3])
+    Q2, R2 = fit_candidates(AggOp, B2)
+    Q2a = [ 0.70710678 -0.70710678  0.0         0.0;
+            0.70710678  0.70710678  0.0         0.0;
+            0.0         0.0         0.70710678 -0.70710678;
+            0.0         0.0         0.70710678  0.70710678 ]
+    R2a = [1.41421356 0.70710678;
+           0.0        0.70710678;
+           1.41421356 3.53553391;
+           0.0        0.70710678]
+    @test Q2 ≈ Q2a
+    @test R2 ≈ R2a
+
+    # Example 3: aggregation excludes third node
+    AggOp3 = sparse([1,2,4], [1,1,2], [1,1,1], 4, 2) |> adjoint
+    B3 = ones(4,1)
+    Q3, R3 = fit_candidates(AggOp3, B3)
+    Q3a = [0.70710678 0.0;
+           0.70710678 0.0;
+           0.0        0.0;
+           0.0        1.0]
+    R3a = [1.41421356;
+           1.0]
+    @test Q3 ≈ Q3a
+    @test R3 ≈ R3a
+end
+
 ## Test Convergance of AMG for linear elasticity
 # Example test: https://ferrite-fem.github.io/Ferrite.jl/stable/tutorials/linear_elasticity/
 using Ferrite, FerriteGmsh, SparseArrays
@@ -175,3 +220,29 @@ x_amg,residuals = solve(A, b, SmoothedAggregationAMG(B);log=true,reltol = 1e-10)
 #ml = smoothed_aggregation(A)
 @test A * x_amg ≈ b
 
+
+
+## DEBUG
+
+ml = smoothed_aggregation(A,B)
+aggregate = StandardAggregation()
+improve_candidates = GaussSeidel(iter=4)
+
+
+
+strength = SymmetricStrength()
+S , _= strength(A, false)
+AggOp = aggregate(S)
+b = zeros(size(A,1))
+improve_candidates(A, B, b)
+T, B = fit_candidates(AggOp, B)
+
+
+
+using DelimitedFiles
+
+
+
+# write with comma delimiter
+#writedlm("B_nns.csv", B, ',')
+B_py = readdlm("B_nns_1.csv", ',', Float64)
