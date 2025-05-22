@@ -93,7 +93,6 @@ function fit_candidates(AggOp, B; tol = 1e-10)
     n_fine, m      = size(B)
     n_fine2, n_agg = size(A)
     @assert n_fine2 == n_fine
-
     n_coarse = m * n_agg
     T = eltype(B)
     Qs = spzeros(T, n_fine, n_coarse)

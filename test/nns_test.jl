@@ -2,68 +2,70 @@ using AlgebraicMultigrid
 using Test
 import AlgebraicMultigrid as AMG
 using SparseArrays, LinearAlgebra
+using Printf
+
 
 ## Test QR factorization
 @testset "fit_candidates Unit tests" begin
-    cases = Vector{Tuple{SparseMatrixCSC{Float64,Int}, Matrix{Float64}}}()
+    cases = Vector{Tuple{SparseMatrixCSC{Float64,Int},Matrix{Float64}}}()
 
     # 1. Aggregates include all dofs, one candidate
     push!(cases, (
-        sparse([1,2,3,4,5], [1,1,1,2,2], ones(5), 5, 2),
+        sparse([1, 2, 3, 4, 5], [1, 1, 1, 2, 2], ones(5), 5, 2),
         ones(5, 1)
     ))
     push!(cases, (
-        sparse([1,2,3,4,5], [2,2,1,1,1], ones(5), 5, 2),
+        sparse([1, 2, 3, 4, 5], [2, 2, 1, 1, 1], ones(5), 5, 2),
         ones(5, 1)
     ))
     push!(cases, (
-        sparse([1,2,3,4,5,6,7,8,9],
-               repeat([1,2,3], inner=3),
-               ones(9), 9, 3),
+        sparse([1, 2, 3, 4, 5, 6, 7, 8, 9],
+            repeat([1, 2, 3], inner=3),
+            ones(9), 9, 3),
         ones(9, 1)
     ))
     push!(cases, (
-        sparse([1,2,3,4,5,6,7,8,9], [3,2,1,1,2,3,2,1,3],
-               ones(9), 9, 3),
+        sparse([1, 2, 3, 4, 5, 6, 7, 8, 9], [3, 2, 1, 1, 2, 3, 2, 1, 3],
+            ones(9), 9, 3),
         reshape(Float64.(0:8), 9, 1)
     ))
 
     # 2. Aggregates include all dofs, two candidates
     push!(cases, (
-        sparse([1,2,3,4], [1,1,2,2], ones(4), 4, 2),
+        sparse([1, 2, 3, 4], [1, 1, 2, 2], ones(4), 4, 2),
         hcat(ones(4), collect(0:3))
     ))
     push!(cases, (
-        sparse([1,2,3,4,5,6,7,8,9], repeat([1,2,3], inner=3), ones(9), 9, 3),
+        sparse([1, 2, 3, 4, 5, 6, 7, 8, 9], repeat([1, 2, 3], inner=3), ones(9), 9, 3),
         hcat(ones(9), collect(0:8))
     ))
     push!(cases, (
-        sparse([1,2,3,4,5,6,7,8,9], [1,1,2,2,3,3,4,4,4], ones(9), 9, 4),
+        sparse([1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 1, 2, 2, 3, 3, 4, 4, 4], ones(9), 9, 4),
         hcat(ones(9), collect(0:8))
     ))
 
     # 3. Small norms
     push!(cases, (
-        sparse([1,2,3,4], [1,1,2,2], ones(4), 4, 2),
+        sparse([1, 2, 3, 4], [1, 1, 2, 2], ones(4), 4, 2),
         hcat(ones(4), 1e-20 .* collect(0:3))
     ))
     push!(cases, (
-        sparse([1,2,3,4], [1,1,2,2], ones(4), 4, 2),
+        sparse([1, 2, 3, 4], [1, 1, 2, 2], ones(4), 4, 2),
         1e-20 .* hcat(ones(4), collect(0:3))
     ))
 
     # Run tests
     for (AggOp, fine) in cases
         # mask dofs not in aggregation
-        for i in 1:size(AggOp,1)
+        for i in 1:size(AggOp, 1)
             if nnz(AggOp[i, :]) == 0
                 fine[i, :] .= 0.0
             end
         end
         Q, R = fit_candidates(AggOp |> adjoint, fine)
         # fit exactly and via projection
-        @test fine ≈ Q * R  
-        @test fine ≈ Q * (Q' * fine) 
+        @test fine ≈ Q * R
+        @test fine ≈ Q * (Q' * fine)
     end
 end
 
@@ -84,7 +86,7 @@ addfacetset!(grid, "bottom", x -> abs(x[2]) < 1.0e-6);
 
 dim = 2
 order = 1 # linear interpolation
-ip = Lagrange{RefTriangle, order}()^dim; # vector valued interpolation
+ip = Lagrange{RefTriangle,order}()^dim; # vector valued interpolation
 
 qr = QuadratureRule{RefTriangle}(1) # 1 quadrature point
 qr_face = FacetQuadratureRule{RefTriangle}(1);
@@ -136,7 +138,7 @@ Emod = 200.0e3 # Young's modulus [MPa]
 Gmod = Emod / (2(1 + ν))  # Shear modulus
 Kmod = Emod / (3(1 - 2ν)) # Bulk modulus
 
-C = gradient(ϵ -> 2 * Gmod * dev(ϵ) + 3 * Kmod * vol(ϵ), zero(SymmetricTensor{2, 2}));
+C = gradient(ϵ -> 2 * Gmod * dev(ϵ) + 3 * Kmod * vol(ϵ), zero(SymmetricTensor{2,2}));
 
 function assemble_cell!(ke, cellvalues, C)
     for q_point in 1:getnquadpoints(cellvalues)
@@ -179,29 +181,41 @@ function create_nns(dh)
     Ndof = ndofs(dh)
     grid = dh.grid
     B = zeros(Float64, Ndof, 3)
-    B[1:2:end,1] .= 1 # x - translation
-    B[2:2:end,2] .= 1 # y - translation
+    B[1:2:end, 1] .= 1 # x - translation
+    B[2:2:end, 2] .= 1 # y - translation
 
     # in-plane rotation (x,y) → (-y,x)
-    coords = reduce(hcat,grid.nodes .|> (n -> n.x |> collect))' # convert nodes to 2d array
-    y = coords[:,2]
-    x = coords[:,1]
-    B[1:2:end,3] .= -y
-    B[2:2:end,3] .= x
+    coords = reduce(hcat, grid.nodes .|> (n -> n.x |> collect))' # convert nodes to 2d array
+    y = coords[:, 2]
+    x = coords[:, 1]
+    B[1:2:end, 3] .= -y
+    B[2:2:end, 3] .= x
     return B
 end
 
-A = allocate_matrix(dh)
-assemble_global!(A, dh, cellvalues, C);
 
-b = zeros(ndofs(dh))
-B  = create_nns(dh)
-assemble_external_forces!(b, dh, getfacetset(grid, "top"), facetvalues, traction);
+@testset "Linear elaticity test" begin
+    A = allocate_matrix(dh)
+    assemble_global!(A, dh, cellvalues, C)
 
-apply!(A, b, ch)
-x = A \ b;
+    b = zeros(ndofs(dh))
+    B = create_nns(dh)
+    assemble_external_forces!(b, dh, getfacetset(grid, "top"), facetvalues, traction)
 
-x_amg,residuals = solve(A, b, SmoothedAggregationAMG(B);log=true,reltol = 1e-10);
+    apply!(A, b, ch)
+    #x = A \ b
 
-ml = smoothed_aggregation(A)
-@test A * x_amg ≈ b
+    x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(B); log=true, reltol=1e-10)
+    x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(); log=true, reltol=1e-10)
+
+    ml = smoothed_aggregation(A, B)
+    @show ml
+
+    # assuming `residuals` is your Vector of floats
+    for (i, r) in enumerate(residuals_nns)
+        @printf("residual at iteration %2d: %6.2e\n", i - 1, r)
+    end
+
+    @test !(A * x_wonns ≈ b)
+    @test A * x_nns ≈ b
+end
