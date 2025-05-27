@@ -1,12 +1,13 @@
 using AlgebraicMultigrid
-using Test
 import AlgebraicMultigrid as AMG
+using Test
 using SparseArrays, LinearAlgebra
+using Ferrite, FerriteGmsh, SparseArrays
 using Printf
-
+using Downloads: download
 
 ## Test QR factorization
-@testset "fit_candidates Unit tests" begin
+@testset "fit_candidates unit test cases" begin
     cases = Vector{Tuple{SparseMatrixCSC{Float64,Int},Matrix{Float64}}}()
 
     # 1. Aggregates include all dofs, one candidate
@@ -69,42 +70,7 @@ using Printf
     end
 end
 
-## Test Convergance of AMG for linear elasticity
-# Example test: https://ferrite-fem.github.io/Ferrite.jl/stable/tutorials/linear_elasticity/
-using Ferrite, FerriteGmsh, SparseArrays
-
-using Downloads: download
-logo_mesh = "logo.geo"
-asset_url = "https://raw.githubusercontent.com/Ferrite-FEM/Ferrite.jl/gh-pages/assets/"
-isfile(logo_mesh) || download(string(asset_url, logo_mesh), logo_mesh)
-
-grid = togrid(logo_mesh);
-
-addfacetset!(grid, "top", x -> x[2] ≈ 1.0) # facets for which x[2] ≈ 1.0 for all nodes
-addfacetset!(grid, "left", x -> abs(x[1]) < 1.0e-6)
-addfacetset!(grid, "bottom", x -> abs(x[2]) < 1.0e-6);
-
-dim = 2
-order = 1 # linear interpolation
-ip = Lagrange{RefTriangle,order}()^dim; # vector valued interpolation
-
-qr = QuadratureRule{RefTriangle}(1) # 1 quadrature point
-qr_face = FacetQuadratureRule{RefTriangle}(1);
-
-cellvalues = CellValues(qr, ip)
-facetvalues = FacetValues(qr_face, ip);
-
-dh = DofHandler(grid)
-add!(dh, :u, ip)
-close!(dh);
-
-ch = ConstraintHandler(dh)
-add!(ch, Dirichlet(:u, getfacetset(grid, "bottom"), (x, t) -> 0.0, 2))
-add!(ch, Dirichlet(:u, getfacetset(grid, "left"), (x, t) -> 0.0, 1))
-close!(ch);
-
-traction(x) = Vec(0.0, 20.0e3 * x[1]);
-
+## Test Convergance of AMG for linear elasticity & bending beam
 function assemble_external_forces!(f_ext, dh, facetset, facetvalues, prescribed_traction)
     # Create a temporary array for the facet's local contributions to the external force vector
     fe_ext = zeros(getnbasefunctions(facetvalues))
@@ -131,14 +97,6 @@ function assemble_external_forces!(f_ext, dh, facetset, facetvalues, prescribed_
     end
     return f_ext
 end
-
-Emod = 200.0e3 # Young's modulus [MPa]
-ν = 0.3        # Poisson's ratio [-]
-
-Gmod = Emod / (2(1 + ν))  # Shear modulus
-Kmod = Emod / (3(1 - 2ν)) # Bulk modulus
-
-C = gradient(ϵ -> 2 * Gmod * dev(ϵ) + 3 * Kmod * vol(ϵ), zero(SymmetricTensor{2,2}));
 
 function assemble_cell!(ke, cellvalues, C)
     for q_point in 1:getnquadpoints(cellvalues)
@@ -193,8 +151,44 @@ function create_nns(dh)
     return B
 end
 
+function linear_elasticity_2d()
+    # Example test: https://ferrite-fem.github.io/Ferrite.jl/stable/tutorials/linear_elasticity/
+    logo_mesh = "logo.geo"
+    asset_url = "https://raw.githubusercontent.com/Ferrite-FEM/Ferrite.jl/gh-pages/assets/"
+    isfile(logo_mesh) || download(string(asset_url, logo_mesh), logo_mesh)
 
-@testset "Linear elaticity test" begin
+    grid = togrid(logo_mesh)
+    addfacetset!(grid, "top", x -> x[2] ≈ 1.0) # facets for which x[2] ≈ 1.0 for all nodes
+    addfacetset!(grid, "left", x -> abs(x[1]) < 1.0e-6)
+    addfacetset!(grid, "bottom", x -> abs(x[2]) < 1.0e-6)
+
+    dim = 2
+    order = 1 # linear interpolation
+    ip = Lagrange{RefTriangle,order}()^dim # vector valued interpolation
+
+    qr = QuadratureRule{RefTriangle}(1) # 1 quadrature point
+    qr_face = FacetQuadratureRule{RefTriangle}(1)
+
+    cellvalues = CellValues(qr, ip)
+    facetvalues = FacetValues(qr_face, ip)
+
+    dh = DofHandler(grid)
+    add!(dh, :u, ip)
+    close!(dh)
+
+    ch = ConstraintHandler(dh)
+    add!(ch, Dirichlet(:u, getfacetset(grid, "bottom"), (x, t) -> 0.0, 2))
+    add!(ch, Dirichlet(:u, getfacetset(grid, "left"), (x, t) -> 0.0, 1))
+    close!(ch)
+
+    traction(x) = Vec(0.0, 20.0e3 * x[1])
+    Emod = 200.0e3 # Young's modulus [MPa]
+    ν = 0.3        # Poisson's ratio [-]
+
+    Gmod = Emod / (2(1 + ν))  # Shear modulus
+    Kmod = Emod / (3(1 - 2ν)) # Bulk modulus
+
+    C = gradient(ϵ -> 2 * Gmod * dev(ϵ) + 3 * Kmod * vol(ϵ), zero(SymmetricTensor{2,2}))
     A = allocate_matrix(dh)
     assemble_global!(A, dh, cellvalues, C)
 
@@ -203,19 +197,160 @@ end
     assemble_external_forces!(b, dh, getfacetset(grid, "top"), facetvalues, traction)
 
     apply!(A, b, ch)
-    #x = A \ b
 
-    x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(B); log=true, reltol=1e-10)
-    x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(); log=true, reltol=1e-10)
+    return A, b, B # return the assembled matrix, force vector, and NNS matrix
+end
 
-    ml = smoothed_aggregation(A, B)
-    @show ml
+@testset "Mechanics test cases" begin
+    @testset "Linear elasticity 2D" begin
+        A, b, B = linear_elasticity_2d()
 
-    # assuming `residuals` is your Vector of floats
-    for (i, r) in enumerate(residuals_nns)
-        @printf("residual at iteration %2d: %6.2e\n", i - 1, r)
+        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(B); log=true, reltol=1e-10)
+        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(); log=true, reltol=1e-10)
+
+        ml = smoothed_aggregation(A, B)
+        @show ml
+
+        # assuming `residuals` is your Vector of floats
+        for (i, r) in enumerate(residuals_nns)
+            @printf("residual at iteration %2d: %6.2e\n", i - 1, r)
+        end
+
+        #test QR factorization on linear elasticity
+        aggregate = StandardAggregation()
+        AggOp = aggregate(A)
+        Q, R = fit_candidates(AggOp, B)
+        # fit exactly and via projection
+        @test B ≈ Q * R
+        @test B ≈ Q * (Q' * B)
+
+        # Check convergence
+        @test !(A * x_wonns ≈ b)
+        @test A * x_nns ≈ b
+
+    end
+end
+
+
+
+@testset "fit_candidates on cantilever frame beam" begin
+    # Beam parameters
+    n_elem = 10
+    E = 210e9      # Young's modulus
+    A = 1e-4       # Cross-section area (for axial)
+    I = 1e-6       # Moment of inertia (for bending)
+    L = 1.0        # Total length
+    le = L / n_elem
+    n_nodes = n_elem + 1
+    dofs_per_node = 3  # u, w, theta
+    n_dofs = n_nodes * dofs_per_node
+
+    # Element stiffness matrix
+    function frame_element_stiffness(EA, EI, le)
+        l2 = le^2
+        l3 = le^3
+        Ke = zeros(6, 6)
+
+        # Axial (u-u)
+        Ke[1, 1] = EA / le
+        Ke[1, 4] = -EA / le
+        Ke[4, 1] = -EA / le
+        Ke[4, 4] = EA / le
+
+        # Bending (w, theta)
+        Kb = EI / l3 * [
+            12.0 6*le -12.0 6*le;
+            6*le 4*l2 -6*le 2*l2;
+            -12.0 -6*le 12.0 -6*le;
+            6*le 2*l2 -6*le 4*l2
+        ]
+        idx = [2, 3, 5, 6]
+        for i in 1:4, j in 1:4
+            Ke[idx[i], idx[j]] = Kb[i, j]
+        end
+        return Ke
     end
 
-    @test !(A * x_wonns ≈ b)
-    @test A * x_nns ≈ b
+    Ke = frame_element_stiffness(E * A, E * I, le)
+
+    # Assemble global stiffness matrix
+    row = Int[]
+    col = Int[]
+    val = Float64[]
+    for e in 1:n_elem
+        n1 = e
+        n2 = e + 1
+        dofmap = [
+            3 * n1 - 2,  # u₁
+            3 * n1 - 1,  # w₁
+            3 * n1,      # θ₁
+            3 * n2 - 2,  # u₂
+            3 * n2 - 1,  # w₂
+            3 * n2       # θ₂
+        ]
+        for i in 1:6, j in 1:6
+            push!(row, dofmap[i])
+            push!(col, dofmap[j])
+            push!(val, Ke[i, j])
+        end
+    end
+    A = sparse(row, col, val, n_dofs, n_dofs)
+    # rhs
+    b = zeros(n_dofs)
+    force_dof = 3 * (n_nodes - 1) + 2  # w at last node
+    b[force_dof] = -1000 # Apply downward force at the last node
+    # Boundary conditions: clamp left end
+    fixed_dofs = [1, 2, 3]  # u₁, w₁, θ₁
+    free_dofs = setdiff(1:n_dofs, fixed_dofs)
+    A_free = A[free_dofs, free_dofs]
+    b_free = b[free_dofs]
+
+    # NNS matrix (3 columns)
+    # i = 1 (u) : 1 0 -y
+    # i = 2 (v) : 0 1 x
+    # i = 3 (θ) : 0 0 1
+    function create_nns_frame(x_coords::Vector{Float64}, dofmap::Vector{Int})
+        N = length(dofmap)
+        B = zeros(N, 3)  # 3 rigid body modes: x-translation, y-translation, rotation
+
+        for (i, dof) in enumerate(dofmap)
+            node = div(dof - 1, 3) + 1
+            offset = mod(dof - 1, 3)
+            x = x_coords[node]
+            y = 0.0  # 1D beam along x
+
+            if offset == 0      # u (x-translation)
+                B[i, 1] = 1.0              # translation in x
+                B[i, 3] = -y               # rotation effect on u (−y)
+            elseif offset == 1  # v (y-translation)
+                B[i, 2] = 1.0              # translation in y
+                B[i, 3] = x                # rotation effect on v (+x)
+            elseif offset == 2  # θ (rotation DOF)
+                B[i, 3] = 1.0              # direct contribution to rigid rotation
+            end
+        end
+
+        return B
+    end
+
+
+    # x-coordinates of nodes
+    x_coords = [le * (i - 1) for i in 1:n_nodes]
+    B = create_nns_frame(x_coords, free_dofs)
+
+    # Aggregation
+    aggregate = StandardAggregation()
+    AggOp = aggregate(A_free)
+
+    # Fit candidates
+    Q, R = fit_candidates(AggOp, B)
+
+    # Test projection and reconstruction
+    @test B ≈ Q * R
+    @test B ≈ Q * (Q' * B)
+
+    # test solution
+    # Analaytical solution for cantilever beam
+    u = A_free \ b_free
+    @test u[end - 1] ≈ (-1000 * L^3)/ (3*E * I) # vertical disp. at the end of the beam
 end
