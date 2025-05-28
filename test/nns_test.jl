@@ -3,7 +3,6 @@ import AlgebraicMultigrid as AMG
 using Test
 using SparseArrays, LinearAlgebra
 using Ferrite, FerriteGmsh, SparseArrays
-using Printf
 using Downloads: download
 
 ## Test QR factorization
@@ -259,7 +258,7 @@ function create_nns_frame(x_coords::Vector{Float64}, dofmap::Vector{Int})
     return B
 end
 
-function cantilever_beam(P, E,A, I, L, n_elem)
+function cantilever_beam(P, E, A, I, L, n_elem)
     le = L / n_elem
     n_nodes = n_elem + 1
     dofs_per_node = 3  # u, w, theta
@@ -316,8 +315,9 @@ end
         ml = smoothed_aggregation(A, B)
         @show ml
 
-        @printf("No NNS: final residual at iteration %2d: %6.2e\n", length(residuals_wonns), residuals_nns[end])
-        @printf("With NNS: final residual at iteration %2d: %6.2e\n", length(residuals_nns), residuals_wonns[end])
+        println("No NNS: final residual at iteration ", length(residuals_wonns), ": ", residuals_nns[end])
+        println("With NNS: final residual at iteration ", length(residuals_nns), ": ", residuals_wonns[end])
+
 
         #test QR factorization on linear elasticity
         aggregate = StandardAggregation()
@@ -341,7 +341,7 @@ end
         A = 1e-4       # Cross-section area (for axial)
         I = 1e-6       # Moment of inertia (for bending)
         L = 1.0        # Total length
-        A, b, B = cantilever_beam(P, E,A, I, L, n_elem)
+        A, b, B = cantilever_beam(P, E, A, I, L, n_elem)
         # test solution
         # Analaytical solution for cantilever beam
         u = A \ b
@@ -351,8 +351,9 @@ end
         x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(B); log=true, reltol=1e-10)
         x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(); log=true, reltol=1e-10)
 
-        @printf("No NNS: final residual at iteration %2d: %6.2e\n", length(residuals_wonns), residuals_nns[end])
-        @printf("With NNS: final residual at iteration %2d: %6.2e\n", length(residuals_nns), residuals_wonns[end])
+        println("No NNS: final residual at iteration ", length(residuals_wonns), ": ", residuals_nns[end])
+        println("With NNS: final residual at iteration ", length(residuals_nns), ": ", residuals_wonns[end])
+
 
         # test QR factorization on bending beam
         # Aggregation

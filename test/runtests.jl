@@ -9,6 +9,7 @@ using Random: seed!
 
 include("sa_tests.jl")
 include("cycle_tests.jl")
+include("nns_test.jl")
 
 @testset "AlgebraicMultigrid Tests" begin
 

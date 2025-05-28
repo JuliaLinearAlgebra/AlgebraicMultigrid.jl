@@ -90,7 +90,7 @@ construct_R(::HermitianSymmetry, P) = P'
 
 function fit_candidates(AggOp, B; tol=1e-10)
     A = adjoint(AggOp)
-    n_fine, m = size(B)
+    n_fine, m = ndims(B) == 1 ? (length(B), 1) : size(B)
     n_fine2, n_agg = size(A)
     @assert n_fine2 == n_fine
     n_coarse = m * n_agg
