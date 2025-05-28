@@ -287,7 +287,12 @@ end
 abstract type AMGAlg end
 
 struct RugeStubenAMG  <: AMGAlg end
-struct SmoothedAggregationAMG  <: AMGAlg end
+struct SmoothedAggregationAMG  <: AMGAlg
+    B::Union{<:AbstractMatrix,Nothing}
+    function SmoothedAggregationAMG(B::Union{AbstractMatrix,Nothing}=nothing)
+        new(B)
+    end
+end
 
 function solve(A::AbstractMatrix, b::Vector, s::AMGAlg, args...; kwargs...)
     solt = init(s, A, b, args...; kwargs...)
@@ -296,8 +301,8 @@ end
 function init(::RugeStubenAMG, A, b, args...; kwargs...)
     AMGSolver(ruge_stuben(A; kwargs...), b)
 end
-function init(::SmoothedAggregationAMG, A, b; kwargs...)
-    AMGSolver(smoothed_aggregation(A; kwargs...), b)
+function init(sa::SmoothedAggregationAMG, A, b; kwargs...)
+    AMGSolver(smoothed_aggregation(A,sa.B; kwargs...), b)
 end
 function solve!(solt::AMGSolver, args...; kwargs...) 
     _solve(solt.ml, solt.b, args...; kwargs...)   
