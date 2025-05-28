@@ -5,3 +5,4 @@
 .vscode
 *.mtx
 *.csv
+*.geo
