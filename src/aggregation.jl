@@ -1,20 +1,20 @@
-function smoothed_aggregation(A::TA, _B=nothing,
-    ::Type{Val{bs}}=Val{1};
-    symmetry=HermitianSymmetry(),
-    strength=SymmetricStrength(),
-    aggregate=StandardAggregation(),
-    smooth=JacobiProlongation(4.0 / 3.0),
-    presmoother=GaussSeidel(),
-    postsmoother=GaussSeidel(),
-    improve_candidates=GaussSeidel(iter=4),
-    max_levels=10,
-    max_coarse=10,
-    diagonal_dominance=false,
-    keep=false,
-    coarse_solver=Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
+function smoothed_aggregation(A::TA, _B = nothing,
+                        ::Type{Val{bs}}=Val{1};
+                        symmetry = HermitianSymmetry(),
+                        strength = SymmetricStrength(),
+                        aggregate = StandardAggregation(),
+                        smooth = JacobiProlongation(4.0/3.0),
+                        presmoother = GaussSeidel(),
+                        postsmoother = GaussSeidel(),
+                        improve_candidates = GaussSeidel(iter=4),
+                        max_levels = 10,
+                        max_coarse = 10,
+                        diagonal_dominance = false,
+                        keep = false,
+                        coarse_solver = Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
 
     n = size(A, 1)
-    B = isnothing(_B) ? ones(T, n, 1) : copy(_B)
+    B = isnothing(_B) ? ones(T,n,1) : copy(_B)
     @assert size(A, 1) == size(B, 1)
 
     #=max_levels, max_coarse, strength =
@@ -28,15 +28,15 @@ function smoothed_aggregation(A::TA, _B=nothing,
     # agg = [aggregate for _ in 1:max_levels - 1]
     # sm = [smooth for _ in 1:max_levels]
 
-    levels = Vector{Level{TA,TA,Adjoint{T,TA}}}()
+    levels = Vector{Level{TA, TA, Adjoint{T, TA}}}()
     bsr_flag = false
     w = MultiLevelWorkspace(Val{bs}, eltype(A))
     residual!(w, size(A, 1))
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
         A, B, bsr_flag = extend_hierarchy!(levels, strength, aggregate, smooth,
-            improve_candidates, diagonal_dominance,
-            keep, A, B, symmetry, bsr_flag)
+                                improve_candidates, diagonal_dominance,
+                                keep, A, B, symmetry, bsr_flag)
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
         #=if size(A, 1) <= max_coarse
@@ -54,9 +54,9 @@ struct HermitianSymmetry
 end
 
 function extend_hierarchy!(levels, strength, aggregate, smooth,
-    improve_candidates, diagonal_dominance, keep,
-    A, B,
-    symmetry, bsr_flag)
+                            improve_candidates, diagonal_dominance, keep,
+                            A, B,
+                            symmetry, bsr_flag)
 
     # Calculate strength of connection matrix
     if symmetry isa HermitianSymmetry
@@ -70,7 +70,7 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
     # b = zeros(eltype(A), size(A, 1))
 
     # Improve candidates
-    b = zeros(size(A, 1))
+    b = zeros(size(A,1))
     improve_candidates(A, B, b)
     T, B = fit_candidates(AggOp, B)
 
