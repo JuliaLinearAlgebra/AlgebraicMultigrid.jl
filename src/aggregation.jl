@@ -70,7 +70,7 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
     # b = zeros(eltype(A), size(A, 1))
 
     # Improve candidates
-    b = zeros(size(A,1))
+    b = zeros(size(A,1),size(B,2))
     improve_candidates(A, B, b)
     T, B = fit_candidates(AggOp, B)
 
