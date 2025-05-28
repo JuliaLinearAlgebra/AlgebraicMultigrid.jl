@@ -201,75 +201,69 @@ function linear_elasticity_2d()
     return A, b, B # return the assembled matrix, force vector, and NNS matrix
 end
 
-@testset "Mechanics test cases" begin
-    @testset "Linear elasticity 2D" begin
-        A, b, B = linear_elasticity_2d()
 
-        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(B); log=true, reltol=1e-10)
-        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(); log=true, reltol=1e-10)
+## Helper functions for cantilever frame beam ##
 
-        ml = smoothed_aggregation(A, B)
-        @show ml
+# Element stiffness matrix
+function frame_element_stiffness(EA, EI, le)
+    l2 = le^2
+    l3 = le^3
+    Ke = zeros(6, 6)
 
-        # assuming `residuals` is your Vector of floats
-        for (i, r) in enumerate(residuals_nns)
-            @printf("residual at iteration %2d: %6.2e\n", i - 1, r)
-        end
+    # Axial (u-u)
+    Ke[1, 1] = EA / le
+    Ke[1, 4] = -EA / le
+    Ke[4, 1] = -EA / le
+    Ke[4, 4] = EA / le
 
-        #test QR factorization on linear elasticity
-        aggregate = StandardAggregation()
-        AggOp = aggregate(A)
-        Q, R = fit_candidates(AggOp, B)
-        # fit exactly and via projection
-        @test B ≈ Q * R
-        @test B ≈ Q * (Q' * B)
-
-        # Check convergence
-        @test !(A * x_wonns ≈ b)
-        @test A * x_nns ≈ b
-
+    # Bending (w, theta)
+    Kb = EI / l3 * [
+        12.0 6*le -12.0 6*le;
+        6*le 4*l2 -6*le 2*l2;
+        -12.0 -6*le 12.0 -6*le;
+        6*le 2*l2 -6*le 4*l2
+    ]
+    idx = [2, 3, 5, 6]
+    for i in 1:4, j in 1:4
+        Ke[idx[i], idx[j]] = Kb[i, j]
     end
+    return Ke
 end
 
 
+function create_nns_frame(x_coords::Vector{Float64}, dofmap::Vector{Int})
+    # NNS matrix (3 columns)
+    # i = 1 (u) : 1 0 -y
+    # i = 2 (v) : 0 1 x
+    # i = 3 (θ) : 0 0 1
+    N = length(dofmap)
+    B = zeros(N, 3)  # 3 rigid body modes: x-translation, y-translation, rotation
 
-@testset "fit_candidates on cantilever frame beam" begin
-    # Beam parameters
-    n_elem = 10
-    E = 210e9      # Young's modulus
-    A = 1e-4       # Cross-section area (for axial)
-    I = 1e-6       # Moment of inertia (for bending)
-    L = 1.0        # Total length
+    for (i, dof) in enumerate(dofmap)
+        node = div(dof - 1, 3) + 1
+        offset = mod(dof - 1, 3)
+        x = x_coords[node]
+        y = 0.0  # 1D beam along x
+
+        if offset == 0      # u (x-translation)
+            B[i, 1] = 1.0              # translation in x
+            B[i, 3] = -y               # rotation effect on u (−y)
+        elseif offset == 1  # v (y-translation)
+            B[i, 2] = 1.0              # translation in y
+            B[i, 3] = x                # rotation effect on v (+x)
+        elseif offset == 2  # θ (rotation DOF)
+            B[i, 3] = 1.0              # direct contribution to rigid rotation
+        end
+    end
+
+    return B
+end
+
+function cantilever_beam(P, E,A, I, L, n_elem)
     le = L / n_elem
     n_nodes = n_elem + 1
     dofs_per_node = 3  # u, w, theta
     n_dofs = n_nodes * dofs_per_node
-
-    # Element stiffness matrix
-    function frame_element_stiffness(EA, EI, le)
-        l2 = le^2
-        l3 = le^3
-        Ke = zeros(6, 6)
-
-        # Axial (u-u)
-        Ke[1, 1] = EA / le
-        Ke[1, 4] = -EA / le
-        Ke[4, 1] = -EA / le
-        Ke[4, 4] = EA / le
-
-        # Bending (w, theta)
-        Kb = EI / l3 * [
-            12.0 6*le -12.0 6*le;
-            6*le 4*l2 -6*le 2*l2;
-            -12.0 -6*le 12.0 -6*le;
-            6*le 2*l2 -6*le 4*l2
-        ]
-        idx = [2, 3, 5, 6]
-        for i in 1:4, j in 1:4
-            Ke[idx[i], idx[j]] = Kb[i, j]
-        end
-        return Ke
-    end
 
     Ke = frame_element_stiffness(E * A, E * I, le)
 
@@ -298,59 +292,78 @@ end
     # rhs
     b = zeros(n_dofs)
     force_dof = 3 * (n_nodes - 1) + 2  # w at last node
-    b[force_dof] = -1000 # Apply downward force at the last node
+    b[force_dof] = P # Apply downward force at the last node
     # Boundary conditions: clamp left end
     fixed_dofs = [1, 2, 3]  # u₁, w₁, θ₁
     free_dofs = setdiff(1:n_dofs, fixed_dofs)
     A_free = A[free_dofs, free_dofs]
     b_free = b[free_dofs]
 
-    # NNS matrix (3 columns)
-    # i = 1 (u) : 1 0 -y
-    # i = 2 (v) : 0 1 x
-    # i = 3 (θ) : 0 0 1
-    function create_nns_frame(x_coords::Vector{Float64}, dofmap::Vector{Int})
-        N = length(dofmap)
-        B = zeros(N, 3)  # 3 rigid body modes: x-translation, y-translation, rotation
-
-        for (i, dof) in enumerate(dofmap)
-            node = div(dof - 1, 3) + 1
-            offset = mod(dof - 1, 3)
-            x = x_coords[node]
-            y = 0.0  # 1D beam along x
-
-            if offset == 0      # u (x-translation)
-                B[i, 1] = 1.0              # translation in x
-                B[i, 3] = -y               # rotation effect on u (−y)
-            elseif offset == 1  # v (y-translation)
-                B[i, 2] = 1.0              # translation in y
-                B[i, 3] = x                # rotation effect on v (+x)
-            elseif offset == 2  # θ (rotation DOF)
-                B[i, 3] = 1.0              # direct contribution to rigid rotation
-            end
-        end
-
-        return B
-    end
-
-
     # x-coordinates of nodes
     x_coords = [le * (i - 1) for i in 1:n_nodes]
     B = create_nns_frame(x_coords, free_dofs)
 
-    # Aggregation
-    aggregate = StandardAggregation()
-    AggOp = aggregate(A_free)
+    return A_free, b_free, B
+end
 
-    # Fit candidates
-    Q, R = fit_candidates(AggOp, B)
+@testset "Mechanics test cases" begin
+    @testset "Linear elasticity 2D" begin
+        A, b, B = linear_elasticity_2d()
 
-    # Test projection and reconstruction
-    @test B ≈ Q * R
-    @test B ≈ Q * (Q' * B)
+        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(B); log=true, reltol=1e-10)
+        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(); log=true, reltol=1e-10)
 
-    # test solution
-    # Analaytical solution for cantilever beam
-    u = A_free \ b_free
-    @test u[end - 1] ≈ (-1000 * L^3)/ (3*E * I) # vertical disp. at the end of the beam
+        ml = smoothed_aggregation(A, B)
+        @show ml
+
+        @printf("No NNS: final residual at iteration %2d: %6.2e\n", length(residuals_wonns), residuals_nns[end])
+        @printf("With NNS: final residual at iteration %2d: %6.2e\n", length(residuals_nns), residuals_wonns[end])
+
+        #test QR factorization on linear elasticity
+        aggregate = StandardAggregation()
+        AggOp = aggregate(A)
+        Q, R = fit_candidates(AggOp, B)
+        # fit exactly and via projection
+        @test B ≈ Q * R
+        @test B ≈ Q * (Q' * B)
+
+        # Check convergence
+        @test !(A * x_wonns ≈ b)
+        @test A * x_nns ≈ b
+
+    end
+
+    @testset "fit_candidates on cantilever frame beam" begin
+        # Beam parameters
+        P = -1000.0    # Applied force at the end of the beam
+        n_elem = 10
+        E = 210e9      # Young's modulus
+        A = 1e-4       # Cross-section area (for axial)
+        I = 1e-6       # Moment of inertia (for bending)
+        L = 1.0        # Total length
+        A, b, B = cantilever_beam(P, E,A, I, L, n_elem)
+        # test solution
+        # Analaytical solution for cantilever beam
+        u = A \ b
+        @test u[end-1] ≈ (P * L^3) / (3 * E * I) # vertical disp. at the end of the beam
+
+
+        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(B); log=true, reltol=1e-10)
+        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(); log=true, reltol=1e-10)
+
+        @printf("No NNS: final residual at iteration %2d: %6.2e\n", length(residuals_wonns), residuals_nns[end])
+        @printf("With NNS: final residual at iteration %2d: %6.2e\n", length(residuals_nns), residuals_wonns[end])
+
+        # test QR factorization on bending beam
+        # Aggregation
+        aggregate = StandardAggregation()
+        AggOp = aggregate(A)
+        Q, R = fit_candidates(AggOp, B)
+        @test B ≈ Q * R
+        @test B ≈ Q * (Q' * B)
+
+        # Check convergence
+        @test !(A * x_wonns ≈ b)
+        @test A * x_nns ≈ b
+    end
 end
