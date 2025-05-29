@@ -4,18 +4,18 @@
 Return callable object constructing a left smoothed aggregation algebraic multigrid preconditioner
 to be used with the `precs` API of LinearSolve.
 """
-struct SmoothedAggregationPreconBuilder{Tk,TB<:Union{Nothing,<:AbstractArray}}
+struct SmoothedAggregationPreconBuilder{Tk}
     blocksize::Int
-    B::TB # near null space basis
     kwargs::Tk
 end
 
-function SmoothedAggregationPreconBuilder(; blocksize = 1,B = nothing, kwargs...)
-    return SmoothedAggregationPreconBuilder(blocksize,B, kwargs)
+function SmoothedAggregationPreconBuilder(; blocksize = 1, kwargs...)
+    return SmoothedAggregationPreconBuilder(blocksize, kwargs)
 end
 
 function (b::SmoothedAggregationPreconBuilder)(A::AbstractSparseMatrixCSC, p)
-    return (aspreconditioner(smoothed_aggregation(SparseMatrixCSC(A),b.B, Val{b.blocksize}; b.kwargs...)), I)
+    B = get(b.kwargs, :B, nothing)  # extract nns from kwargs, default to `nothing`
+    return (aspreconditioner(smoothed_aggregation(SparseMatrixCSC(A), B, Val{b.blocksize}; b.kwargs...)),I)
 end
 
 
