@@ -287,9 +287,12 @@ end
 abstract type AMGAlg end
 
 struct RugeStubenAMG  <: AMGAlg end
+
+"""
+"""
 struct SmoothedAggregationAMG  <: AMGAlg
-    B::Union{<:AbstractMatrix,Nothing}
-    function SmoothedAggregationAMG(B::Union{AbstractMatrix,Nothing}=nothing)
+    B::Union{<:AbstractArray,Nothing} # `B` can be `Vector`, `Matrix`, or `nothing`
+    function SmoothedAggregationAMG(B::Union{AbstractArray,Nothing}=nothing)
         new(B)
     end
 end
