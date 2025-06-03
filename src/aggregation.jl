@@ -14,7 +14,7 @@ function smoothed_aggregation(A::TA, _B = nothing,
                         coarse_solver = Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
 
     n = size(A, 1)
-    B = isnothing(_B) ? ones(T,n,1) : copy(_B)
+    B = isnothing(_B) ? ones(T,n) : copy(_B)
     @assert size(A, 1) == size(B, 1)
 
     #=max_levels, max_coarse, strength =

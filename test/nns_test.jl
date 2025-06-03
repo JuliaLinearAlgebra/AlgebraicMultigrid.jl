@@ -1,3 +1,25 @@
+## Test `B` as an argument for `SmoothedAggregationAMG`
+@testset "Different `B` as an argument for `SmoothedAggregationAMG` " begin
+    A = poisson(100); 
+    b = rand(100);
+    n = size(A,1)
+    T = eltype(A)
+
+    #1. pass `B`` as nothing (Default case)
+    x_nothing = solve(A, b, SmoothedAggregationAMG(), maxiter = 1, abstol = 1e-6)
+
+    #2. pass `B` as vector
+    B = ones(T,n)
+    x_vec = solve(A, b, SmoothedAggregationAMG(B), maxiter = 1, abstol = 1e-6)
+    @test x_vec ≈ x_nothing
+
+    #3. pass `B` as matrix
+    B = ones(T,n,1)
+    x_mat = solve(A, b, SmoothedAggregationAMG(B), maxiter = 1, abstol = 1e-6)
+    @test x_mat ≈ x_nothing
+end
+
+
 ## Test QR factorization
 @testset "fit_candidates unit test cases" begin
     cases = Vector{Tuple{SparseMatrixCSC{Float64,Int},Matrix{Float64}}}()
