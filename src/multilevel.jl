@@ -287,47 +287,7 @@ end
 abstract type AMGAlg end
 
 struct RugeStubenAMG  <: AMGAlg end
-
-"""
-    SmoothedAggregationAMG(B=nothing)
-
-Smoothed Aggregation AMG (Algebraic Multigrid) algorithm configuration.
-
-# Arguments
-- `B::Union{AbstractArray, Nothing}`: The **near null space** in SA-AMG represents the low energy that cannot be attenuated by relaxtion, and thus needs to be perserved across the coarse grid. 
-
-    - `B` can be:
-        - a `Vector` (e.g., for scalar PDEs),
-        - a `Matrix` (e.g., for vector PDEs or systems with multiple equations),
-        - or `nothing`.
-
-# Notes
-If `B` is set to `nothing`, it will be internally defaulted to `B = ones(T, n)`, where `T = eltype(A)` and `n = size(A, 1)`.
-
-# Examples
-
-**Poisson equation (scalar PDE):**
-```julia
-n = size(A, 1)
-B = ones(Float64, n)
-amg = SmoothedAggregationAMG(B)
-```
-
-**Linear elasticity equation in 2d (vector PDE):**
-```julia
-n = size(A, 1)          # Ndof = 2 * number of nodes
-B = zeros(Float64, n, 3) 
-B[1:2:end,   :] = [1.0, 0.0, -y]
-B[2:2:end, :] = [0.0, 1.0,  x]
-amg = SmoothedAggregationAMG(B)
-```
-"""
-struct SmoothedAggregationAMG  <: AMGAlg
-    B::Union{<:AbstractArray,Nothing} # `B` can be `Vector`, `Matrix`, or `nothing`
-    function SmoothedAggregationAMG(B::Union{AbstractArray,Nothing}=nothing)
-        new(B)
-    end
-end
+struct SmoothedAggregationAMG  <: AMGAlg end
 
 function solve(A::AbstractMatrix, b::Vector, s::AMGAlg, args...; kwargs...)
     solt = init(s, A, b, args...; kwargs...)
@@ -337,7 +297,7 @@ function init(::RugeStubenAMG, A, b, args...; kwargs...)
     AMGSolver(ruge_stuben(A; kwargs...), b)
 end
 function init(sa::SmoothedAggregationAMG, A, b; kwargs...)
-    AMGSolver(smoothed_aggregation(A,sa.B; kwargs...), b)
+    AMGSolver(smoothed_aggregation(A; kwargs...), b)
 end
 function solve!(solt::AMGSolver, args...; kwargs...) 
     _solve(solt.ml, solt.b, args...; kwargs...)   

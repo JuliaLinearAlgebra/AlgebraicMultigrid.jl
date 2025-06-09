@@ -14,8 +14,7 @@ function SmoothedAggregationPreconBuilder(; blocksize = 1, kwargs...)
 end
 
 function (b::SmoothedAggregationPreconBuilder)(A::AbstractSparseMatrixCSC, p)
-    B = get(b.kwargs, :B, nothing)  # extract nns from kwargs, default to `nothing`
-    return (aspreconditioner(smoothed_aggregation(SparseMatrixCSC(A), B, Val{b.blocksize}; b.kwargs...)),I)
+    return (aspreconditioner(smoothed_aggregation(SparseMatrixCSC(A), Val{b.blocksize}; b.kwargs...)), I)
 end
 
 

@@ -10,12 +10,12 @@
 
     #2. pass `B` as vector
     B = ones(T,n)
-    x_vec = solve(A, b, SmoothedAggregationAMG(B), maxiter = 1, abstol = 1e-6)
+    x_vec = solve(A, b, SmoothedAggregationAMG(), maxiter = 1, abstol = 1e-6;B=B)
     @test x_vec ≈ x_nothing
 
     #3. pass `B` as matrix
     B = ones(T,n,1)
-    x_mat = solve(A, b, SmoothedAggregationAMG(B), maxiter = 1, abstol = 1e-6)
+    x_mat = solve(A, b, SmoothedAggregationAMG(), maxiter = 1, abstol = 1e-6;B=B)
     @test x_mat ≈ x_nothing
 end
 
@@ -194,11 +194,8 @@ end
         @load "lin_elastic_2d.jld2" A b B
         A = SparseMatrixCSC(A.m, A.n, A.colptr, A.rowval, A.nzval)
 
-        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(B); log=true, reltol=1e-10)
-        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(); log=true, reltol=1e-10)
-
-        ml = smoothed_aggregation(A, B)
-        @show ml
+        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10;B=B)
+        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10)
 
         println("No NNS: final residual at iteration ", length(residuals_wonns), ": ", residuals_wonns[end])
         println("With NNS: final residual at iteration ", length(residuals_nns), ": ", residuals_nns[end])
@@ -233,8 +230,8 @@ end
         @test u[end-1] ≈ (P * L^3) / (3 * E * I) # vertical disp. at the end of the beam
 
 
-        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(B); log=true, reltol=1e-10)
-        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(); log=true, reltol=1e-10)
+        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10,B=B)
+        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10)
 
         println("No NNS: final residual at iteration ", length(residuals_wonns), ": ", residuals_wonns[end])
         println("With NNS: final residual at iteration ", length(residuals_nns), ": ", residuals_nns[end])
