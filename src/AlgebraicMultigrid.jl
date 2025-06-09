@@ -9,7 +9,7 @@ using Printf
 @reexport import CommonSolve: solve, solve!, init
 using Reexport
 
-using LinearAlgebra: rmul!,qr
+using LinearAlgebra: rmul!, qr
 
 include("utils.jl")
 export approximate_spectral_radius
