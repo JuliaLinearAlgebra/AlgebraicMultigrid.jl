@@ -9,6 +9,10 @@ function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}},
                 max_coarse = 10,
                 coarse_solver = Pinv, kwargs...) where {Ti,Tv,bs,TA<:SparseMatrixCSC{Ti,Tv}}
 
+    
+    # fails if near null space `B` is provided
+    haskey(kwargs, :B) && kwargs[:B] !== nothing && error("near null space `B` is only supported for smoothed aggregation AMG, not Ruge-Stüben AMG.")
+                
     if _A isa Symmetric && Ti <: Real || _A isa Hermitian
         A = _A.data
         symmetric = true
