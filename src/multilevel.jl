@@ -187,7 +187,13 @@ Keyword Arguments
 * maxiter::Int64 - maximum number of iterations to execute
 * verbose::Bool - display residual at each iteration
 * log::Bool - return vector of residuals along with solution
+* B::AbstractArray - the **near null space** in SA-AMG, which represents the low energy that cannot be attenuated by relaxtion, and thus needs to be perserved across the coarse grid. 
 
+!!! note
+    `B` can be:
+        - a `Vector` (e.g., for scalar PDEs),
+        - a `Matrix` (e.g., for vector PDEs or systems with multiple equations),
+    If `B` is not provided, it defaults to a vector of ones.
 """
 function _solve(ml::MultiLevel, b::AbstractArray, args...; kwargs...)
     n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1)
@@ -296,7 +302,7 @@ end
 function init(::RugeStubenAMG, A, b, args...; kwargs...)
     AMGSolver(ruge_stuben(A; kwargs...), b)
 end
-function init(::SmoothedAggregationAMG, A, b; kwargs...)
+function init(sa::SmoothedAggregationAMG, A, b; kwargs...)
     AMGSolver(smoothed_aggregation(A; kwargs...), b)
 end
 function solve!(solt::AMGSolver, args...; kwargs...) 

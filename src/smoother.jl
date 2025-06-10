@@ -29,6 +29,7 @@ end
 function gs!(A, b, x, start, step, stop)
     n = size(A, 1)
     z = zero(eltype(A))
+    @assert size(x,2) == size(b, 2) "x and b must have the same number of columns"
     @inbounds for col in 1:size(x, 2)
         for i in start:step:stop
             rsum = z
