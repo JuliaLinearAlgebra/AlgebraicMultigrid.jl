@@ -1,7 +1,7 @@
 using SparseArrays, DelimitedFiles, Random
 using Test, LinearAlgebra
 using IterativeSolvers, LinearSolve, AlgebraicMultigrid
-import AlgebraicMultigrid: Pinv, Classical
+import AlgebraicMultigrid: Pinv, BackslashSolver, Classical
 using JLD2
 using FileIO
 
@@ -71,7 +71,30 @@ end
 @testset "Coarse Solver" begin
 A = float.(poisson(10))
 b = A * ones(10)
+
+# Test BackslashSolver (new default, much more efficient)
+x = similar(b)
+BackslashSolver(A)(x, b)
+@test sum(abs2, x - ones(10)) < 1e-12  # Should be more accurate than Pinv
+
+# Test Pinv (legacy solver, less efficient)
 @test sum(abs2, Pinv(A)(similar(b), b) - ones(10)) < 1e-6
+
+# Test that BackslashSolver handles multiple RHS
+B = hcat(b, 2*b)
+X = similar(B)
+BackslashSolver(A)(X, B) 
+@test sum(abs2, X[:, 1] - ones(10)) < 1e-12
+@test sum(abs2, X[:, 2] - 2*ones(10)) < 1e-12
+
+# Test with sparse matrices of different types
+for T in [Float32, Float64]
+    A_typed = T.(A)
+    b_typed = T.(b)
+    x_typed = similar(b_typed)
+    BackslashSolver(A_typed)(x_typed, b_typed)
+    @test sum(abs2, x_typed - ones(T, 10)) < 1e-6
+end
 end
 
 @testset "Multilevel" begin

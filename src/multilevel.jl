@@ -54,9 +54,40 @@ end
 abstract type CoarseSolver end
 
 """
+    BackslashSolver{T,F} <: CoarseSolver
+
+Coarse solver using Julia's built-in factorizations via `factorize()` and `ldiv!()`.
+Much more efficient than `Pinv` as it preserves sparsity and uses appropriate 
+factorizations (UMFPACK, CHOLMOD, etc.) based on matrix properties.
+"""
+struct BackslashSolver{T,F} <: CoarseSolver
+    factorization::F
+    function BackslashSolver{T}(A) where T
+        # Use Julia's built-in factorize - automatically picks best method
+        # (UMFPACK for sparse nonsymmetric, CHOLMOD for sparse SPD, etc.)
+        fact = factorize(A)
+        new{T,typeof(fact)}(fact)
+    end
+end
+BackslashSolver(A) = BackslashSolver{eltype(A)}(A)
+Base.show(io::IO, p::BackslashSolver) = print(io, "BackslashSolver")
+
+function (solver::BackslashSolver)(x, b)
+    # Handle multiple RHS efficiently
+    for i ∈ 1:size(b, 2)
+        # Use backslash - Julia's factorizations are optimized for this
+        x[:, i] = solver.factorization \ b[:, i]
+    end
+end
+
+"""
     Pinv{T} <: CoarseSolver
 
 Moore-Penrose pseudo inverse coarse solver. Calls `pinv`
+
+!!! warning "Deprecated"
+    This solver converts sparse matrices to dense and computes the full pseudoinverse,
+    which is very inefficient. Consider using `BackslashSolver` instead.
 """
 struct Pinv{T} <: CoarseSolver
     pinvA::Matrix{T}

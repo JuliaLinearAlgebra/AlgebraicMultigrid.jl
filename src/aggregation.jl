@@ -12,7 +12,7 @@ function smoothed_aggregation(A::TA,
                         max_coarse = 10,
                         diagonal_dominance = false,
                         keep = false,
-                        coarse_solver = Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
+                        coarse_solver = BackslashSolver, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
     n = size(A, 1)
     B = isnothing(B) ? ones(T,n) : copy(B)
     @assert size(A, 1) == size(B, 1)

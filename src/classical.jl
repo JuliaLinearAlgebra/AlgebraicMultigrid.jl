@@ -7,7 +7,7 @@ function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}},
                 postsmoother = GaussSeidel(),
                 max_levels = 10,
                 max_coarse = 10,
-                coarse_solver = Pinv, kwargs...) where {Ti,Tv,bs,TA<:SparseMatrixCSC{Ti,Tv}}
+                coarse_solver = BackslashSolver, kwargs...) where {Ti,Tv,bs,TA<:SparseMatrixCSC{Ti,Tv}}
 
     
     # fails if near null space `B` is provided
