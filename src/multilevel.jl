@@ -65,7 +65,7 @@ struct BackslashSolver{T,F} <: CoarseSolver
     function BackslashSolver{T}(A) where T
         # Use Julia's built-in factorize - automatically picks best method
         # (UMFPACK for sparse nonsymmetric, CHOLMOD for sparse SPD, etc.)
-        fact = factorize(A)
+        fact = svd(A)
         new{T,typeof(fact)}(fact)
     end
 end
