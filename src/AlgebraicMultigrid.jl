@@ -1,5 +1,6 @@
 module AlgebraicMultigrid
 
+using TimerOutputs
 using Reexport
 using LinearAlgebra
 using LinearSolve

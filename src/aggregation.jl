@@ -13,6 +13,9 @@ function smoothed_aggregation(A::TA,
                         diagonal_dominance = false,
                         keep = false,
                         coarse_solver = Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
+    
+    @timeit_debug "prologue" begin
+
     n = size(A, 1)
     B = isnothing(B) ? ones(T,n) : copy(B)
     @assert size(A, 1) == size(B, 1)
@@ -33,8 +36,10 @@ function smoothed_aggregation(A::TA,
     w = MultiLevelWorkspace(Val{bs}, eltype(A))
     residual!(w, size(A, 1))
 
+    end
+
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
-        A, B, bsr_flag = extend_hierarchy!(levels, strength, aggregate, smooth,
+        @timeit_debug "extend_hierarchy!" A, B, bsr_flag = extend_hierarchy!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
                                 keep, A, B, symmetry, bsr_flag)
         coarse_x!(w, size(A, 1))
@@ -47,7 +52,9 @@ function smoothed_aggregation(A::TA,
     #=A, B = extend_hierarchy!(levels, strength, aggregate, smooth,
                             improve_candidates, diagonal_dominance,
                             keep, A, B, symmetry)=#
-    MultiLevel(levels, A, coarse_solver(A), presmoother, postsmoother, w)
+    @timeit_debug "coarse solver setup" cs = coarse_solver(A)
+    @timeit_debug "ml setup" ml = MultiLevel(levels, A, cs, presmoother, postsmoother, w)
+    return ml
 end
 
 struct HermitianSymmetry
@@ -59,26 +66,28 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
                             symmetry, bsr_flag)
 
     # Calculate strength of connection matrix
-    if symmetry isa HermitianSymmetry
+    @timeit_debug "strength" if symmetry isa HermitianSymmetry
         S, _T = strength(A, bsr_flag)
     else
         S, _T = strength(adjoint(A), bsr_flag)
     end
 
     # Aggregation operator
-    AggOp = aggregate(S)
+    @timeit_debug "aggregation" AggOp = aggregate(S)
     # b = zeros(eltype(A), size(A, 1))
 
     # Improve candidates
     b = zeros(size(A,1),size(B,2))
-    improve_candidates(A, B, b)
+    @timeit_debug "improve candidates" improve_candidates(A, B, b)
     T, B = fit_candidates(AggOp, B)
 
-    P = smooth(A, T, S, B)
-    R = construct_R(symmetry, P)
-    push!(levels, Level(A, P, R))
+    @timeit_debug "restriction setup" begin
+        P = smooth(A, T, S, B)
+        R = construct_R(symmetry, P)
+        push!(levels, Level(A, P, R))
+    end
 
-    A = R * A * P
+    @timeit_debug "RAP" A = R * A * P
 
     dropzeros!(A)
 
