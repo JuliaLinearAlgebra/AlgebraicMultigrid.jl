@@ -13,23 +13,12 @@ function smoothed_aggregation(A::TA,
                         diagonal_dominance = false,
                         keep = false,
                         coarse_solver = Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
-    
+
     @timeit_debug "prologue" begin
 
     n = size(A, 1)
     B = isnothing(B) ? ones(T,n) : copy(B)
     @assert size(A, 1) == size(B, 1)
-
-    #=max_levels, max_coarse, strength =
-        levelize_strength_or_aggregation(max_levels, max_coarse, strength)
-    max_levels, max_coarse, aggregate =
-        levelize_strength_or_aggregation(max_levels, max_coarse, aggregate)
-
-    improve_candidates =
-        levelize_smooth_or_improve_candidates(improve_candidates, max_levels)=#
-    # str = [stength for _ in 1:max_levels - 1]
-    # agg = [aggregate for _ in 1:max_levels - 1]
-    # sm = [smooth for _ in 1:max_levels]
 
     levels = Vector{Level{TA, TA, Adjoint{T, TA}}}()
     bsr_flag = false
@@ -39,19 +28,15 @@ function smoothed_aggregation(A::TA,
     end
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
-        @timeit_debug "extend_hierarchy!" A, B, bsr_flag = extend_hierarchy!(levels, strength, aggregate, smooth,
+        @timeit_debug "extend_hierarchy!" A, B, bsr_flag = extend_hierarchy_sa!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
                                 keep, A, B, symmetry, bsr_flag)
+        size(A, 1) == 0 && break
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
-        #=if size(A, 1) <= max_coarse
-            break
-        end=#
         residual!(w, size(A, 1))
     end
-    #=A, B = extend_hierarchy!(levels, strength, aggregate, smooth,
-                            improve_candidates, diagonal_dominance,
-                            keep, A, B, symmetry)=#
+
     @timeit_debug "coarse solver setup" cs = coarse_solver(A)
     @timeit_debug "ml setup" ml = MultiLevel(levels, A, cs, presmoother, postsmoother, w)
     return ml
@@ -60,7 +45,7 @@ end
 struct HermitianSymmetry
 end
 
-function extend_hierarchy!(levels, strength, aggregate, smooth,
+function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
                             improve_candidates, diagonal_dominance, keep,
                             A, B,
                             symmetry, bsr_flag)
@@ -155,6 +140,7 @@ function fit_candidates(AggOp, B::AbstractMatrix; tol=1e-10)
         rows = A.rowval[A.colptr[agg]:A.colptr[agg+1]-1]
         M = @view B[rows, :]     # size(rows) × m
 
+        # TODO the code below can be optimized
         F = qr(M)
         r = min(length(rows), m)
         Qfull = Matrix(F.Q)
