@@ -223,7 +223,7 @@ function _solve!(x, ml::MultiLevel, b::AbstractArray{T},
     itr = lvl = 1
     while itr <= maxiter && (!calculate_residual || normres > abstol)
         if length(ml) == 1
-            ml.coarse_solver(x, b)
+            @timeit_debug "Coarse solve" ml.coarse_solver(x, b)
         else
             __solve!(x, ml, cycle, b, lvl)
         end
@@ -259,27 +259,27 @@ end
 
 function __solve!(x, ml, cycle::Cycle, b, lvl)
     A = ml.levels[lvl].A
-    ml.presmoother(A, x, b)
+    @timeit_debug "Presmoother" ml.presmoother(A, x, b)
 
     res = ml.workspace.res_vecs[lvl]
-    mul!(res, A, x)
+    @timeit_debug "Residual eval" mul!(res, A, x)
     reshape(res, size(b)) .= b .- reshape(res, size(b))
 
     coarse_b = ml.workspace.coarse_bs[lvl]
-    mul!(coarse_b, ml.levels[lvl].R, res)
+    @timeit_debug "Restriction" mul!(coarse_b, ml.levels[lvl].R, res)
 
     coarse_x = ml.workspace.coarse_xs[lvl]
     coarse_x .= 0
     if lvl == length(ml.levels)
-        ml.coarse_solver(coarse_x, coarse_b)
+        @timeit_debug "Coarse solve" ml.coarse_solver(coarse_x, coarse_b)
     else
         coarse_x = __solve_next!(coarse_x, ml, cycle, coarse_b, lvl + 1)
     end
 
-    mul!(res, ml.levels[lvl].P, coarse_x)
+    @timeit_debug "Prolongation" mul!(res, ml.levels[lvl].P, coarse_x)
     x .+= res
 
-    ml.postsmoother(A, x, b)
+    @timeit_debug "Postsmoother" ml.postsmoother(A, x, b)
 
     x
 end

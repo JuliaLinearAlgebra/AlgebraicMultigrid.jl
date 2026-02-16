@@ -9,10 +9,9 @@ function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}},
                 max_coarse = 10,
                 coarse_solver = Pinv, kwargs...) where {Ti,Tv,bs,TA<:SparseMatrixCSC{Ti,Tv}}
 
-    
     # fails if near null space `B` is provided
     haskey(kwargs, :B) && kwargs[:B] !== nothing && error("near null space `B` is only supported for smoothed aggregation AMG, not Ruge-Stüben AMG.")
-                
+
     if _A isa Symmetric && Ti <: Real || _A isa Hermitian
         A = _A.data
         symmetric = true
@@ -26,26 +25,28 @@ function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}},
     residual!(w, size(A, 1))
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
-        A = extend_heirarchy!(levels, strength, CF, A, symmetric)
+        @timeit_debug "extend_hierarchy!" A = extend_hierarchy_rs!(levels, strength, CF, A, symmetric)
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
         residual!(w, size(A, 1))
     end
 
-    MultiLevel(levels, A, coarse_solver(A), presmoother, postsmoother, w)
+    @timeit_debug "coarse solver setup" cs = coarse_solver(A)
+    return MultiLevel(levels, A, cs, presmoother, postsmoother, w)
 end
 
-function extend_heirarchy!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, symmetric) where {Ti,Tv}
+function extend_hierarchy_rs!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, symmetric) where {Ti,Tv}
     if symmetric
         At = A
     else
         At = adjoint(A)
     end
-    S, T = strength(At)
-    splitting = CF(S)
-    P, R = direct_interpolation(At, T, splitting)
+    @timeit_debug "strength" S, T = strength(At)
+    @timeit_debug "splitting" splitting = CF(S)
+    @timeit_debug "interpolation" P, R = direct_interpolation(At, T, splitting)
+    @timeit_debug "RAP" RAP = R * A * P
     push!(levels, Level(A, P, R))
-    return R * A * P
+    return RAP
 end
 
 function direct_interpolation(At, T, splitting)
@@ -53,8 +54,8 @@ function direct_interpolation(At, T, splitting)
     fill!(T.nzval, eltype(At)(1))
     T .= At .* T
     
-    Pp = rs_direct_interpolation_pass1(T, splitting)
-    Px, Pj, Pp = rs_direct_interpolation_pass2(At, T, splitting, Pp)
+    @timeit_debug "di pass1" Pp = rs_direct_interpolation_pass1(T, splitting)
+    @timeit_debug "di pass2" Px, Pj, Pp = rs_direct_interpolation_pass2(At, T, splitting, Pp)
     R = SparseMatrixCSC(isempty(Pj) ?  0 : maximum(Pj), size(At, 1), Pp, Pj, Px)
     P = R'
 
