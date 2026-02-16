@@ -79,7 +79,7 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
     # Improve candidates
     b = zeros(size(A,1),size(B,2))
     @timeit_debug "improve candidates" improve_candidates(A, B, b)
-    T, B = fit_candidates(AggOp, B)
+    @timeit_debug "fit candidates" T, B = fit_candidates(AggOp, B)
 
     @timeit_debug "restriction setup" begin
         P = smooth(A, T, S, B)
@@ -89,7 +89,7 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
 
     @timeit_debug "RAP" A = R * A * P
 
-    dropzeros!(A)
+    # dropzeros!(A)
 
     bsr_flag = true
 
@@ -97,7 +97,51 @@ function extend_hierarchy!(levels, strength, aggregate, smooth,
 end
 construct_R(::HermitianSymmetry, P) = P'
 
-function fit_candidates(AggOp, B; tol=1e-10)
+function fit_candidates(AggOp, B::AbstractVector; tol=1e-10)
+
+    A = adjoint(AggOp)
+    n_fine, n_coarse = size(A)
+    n_col = n_coarse
+
+    R = zeros(eltype(B), n_coarse)
+    Qx = zeros(eltype(B), nnz(A))
+    # copy!(Qx, B)
+    for i = 1:size(Qx, 1)
+        Qx[i] = B[i]
+    end
+    # copy!(A.nzval, B)
+    for i = 1:n_col
+        for j in nzrange(A,i)
+            row = A.rowval[j]
+            A.nzval[j] = B[row]
+        end
+    end
+    k = 1
+    for i = 1:n_col
+        norm_i = norm_col(A, Qx, i)
+        threshold_i = tol * norm_i
+        if norm_i > threshold_i
+            scale = 1 / norm_i
+            R[i] = norm_i
+        else
+            scale = 0
+            R[i] = 0
+        end
+        for j in nzrange(A, i)
+            row = A.rowval[j]
+            # Qx[row] *= scale
+            #@show k
+            # Qx[k] *= scale
+            # k += 1
+            A.nzval[j] *= scale
+        end
+    end
+
+    # SparseMatrixCSC(size(A)..., A.colptr, A.rowval, Qx), R
+    A, R
+end
+
+function fit_candidates(AggOp, B::AbstractMatrix; tol=1e-10)
     A = adjoint(AggOp)
     n_fine, m = ndims(B) == 1 ? (length(B), 1) : size(B)
     n_fine2, n_agg = size(A)
@@ -110,7 +154,6 @@ function fit_candidates(AggOp, B; tol=1e-10)
     for agg in 1:n_agg
         rows = A.rowval[A.colptr[agg]:A.colptr[agg+1]-1]
         M = @view B[rows, :]     # size(rows) × m
-
 
         F = qr(M)
         r = min(length(rows), m)
@@ -132,4 +175,18 @@ function fit_candidates(AggOp, B; tol=1e-10)
     end
 
     return Qs, R
+end
+
+function norm_col(A, Qx, i)
+    s = zero(eltype(A))
+    for j in nzrange(A, i)
+        if A.rowval[j] > length(Qx)
+            val = 1
+        else
+            val = Qx[A.rowval[j]]
+        end
+        # val = A.nzval[A.rowval[j]]
+        s += val*val
+    end
+    sqrt(s)
 end
