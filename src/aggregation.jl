@@ -69,16 +69,15 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
     @timeit_debug "restriction setup" begin
         P = smooth(A, T, S, B)
         R = construct_R(symmetry, P)
-        push!(levels, Level(A, P, R))
     end
 
-    @timeit_debug "RAP" A = R * A * P
+    @timeit_debug "RAP" RAP = R * A * P
 
-    # dropzeros!(A)
+    push!(levels, Level(A, P, R))
 
     bsr_flag = true
 
-    A, B, bsr_flag
+    RAP, B, bsr_flag
 end
 construct_R(::HermitianSymmetry, P) = P'
 

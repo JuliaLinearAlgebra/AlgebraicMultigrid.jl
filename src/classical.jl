@@ -26,7 +26,6 @@ function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}},
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
         @timeit_debug "extend_hierarchy!" A = extend_hierarchy_rs!(levels, strength, CF, A, symmetric)
-        size(A, 1) == 0 && break
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
         residual!(w, size(A, 1))
@@ -45,8 +44,8 @@ function extend_hierarchy_rs!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, s
     @timeit_debug "strength" S, T = strength(At)
     @timeit_debug "splitting" splitting = CF(S)
     @timeit_debug "interpolation" P, R = direct_interpolation(At, T, splitting)
-    push!(levels, Level(A, P, R))
     @timeit_debug "RAP" RAP = R * A * P
+    push!(levels, Level(A, P, R))
     return RAP
 end
 
