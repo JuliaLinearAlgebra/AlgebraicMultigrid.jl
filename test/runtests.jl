@@ -350,3 +350,5 @@ for sz in [ (10,10), (20,20), (50,50)]
 end
 
 end
+
+include("test_smoothers.jl")
