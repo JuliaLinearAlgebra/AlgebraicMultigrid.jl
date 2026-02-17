@@ -4,6 +4,7 @@ using IterativeSolvers, LinearSolve, AlgebraicMultigrid
 import AlgebraicMultigrid: Pinv, Classical
 using JLD2
 using FileIO
+using MatrixDepot
 
 using Random: seed!
 
@@ -352,3 +353,15 @@ end
 end
 
 include("test_smoothers.jl")
+
+using MatrixDepot
+@testset "Non-symmetric system (Issue #95)" begin
+    A = matrixdepot("FEMLAB/poisson3Da")
+    b = ones(size(A, 2))
+
+    xrs = solve(A, b, RugeStubenAMG())
+    @test norm(A*b-xrs) < 1e-8
+    
+    xsa = solve(A, b, SmoothedAggregationAMG())
+    @test norm(A*b-xsa) < 1e-8
+end
