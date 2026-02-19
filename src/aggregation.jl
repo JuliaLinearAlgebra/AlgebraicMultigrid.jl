@@ -12,6 +12,7 @@ function smoothed_aggregation(A::TA,
                         max_coarse = 10,
                         diagonal_dominance = false,
                         keep = false,
+                        verbose = false,
                         coarse_solver = Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
 
     @timeit_debug "prologue" begin
@@ -30,7 +31,7 @@ function smoothed_aggregation(A::TA,
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
         @timeit_debug "extend_hierarchy!" A, B, bsr_flag = extend_hierarchy_sa!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
-                                keep, A, B, symmetry, bsr_flag)
+                                keep, A, B, symmetry, bsr_flag, verbose)
         size(A, 1) == 0 && break
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
@@ -39,6 +40,11 @@ function smoothed_aggregation(A::TA,
 
     @timeit_debug "coarse solver setup" cs = coarse_solver(A)
     @timeit_debug "ml setup" ml = MultiLevel(levels, A, cs, presmoother, postsmoother, w)
+
+    if verbose
+        @info ml
+    end
+
     return ml
 end
 
@@ -46,9 +52,9 @@ struct HermitianSymmetry
 end
 
 function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
-                            improve_candidates, diagonal_dominance, keep,
-                            A, B,
-                            symmetry, bsr_flag)
+                            improve_candidates, diagonal_dominance,
+                            keep, A, B,
+                            symmetry, bsr_flag, verbose = false)
 
     # Calculate strength of connection matrix
     @timeit_debug "strength" if symmetry isa HermitianSymmetry
@@ -59,7 +65,6 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
 
     # Aggregation operator
     @timeit_debug "aggregation" AggOp = aggregate(S)
-    # b = zeros(eltype(A), size(A, 1))
 
     # Improve candidates
     b = zeros(size(A,1),size(B,2))
@@ -82,7 +87,6 @@ end
 construct_R(::HermitianSymmetry, P) = P'
 
 function fit_candidates(AggOp, B::AbstractVector; tol=1e-10)
-
     A = adjoint(AggOp)
     n_fine, n_coarse = size(A)
     n_col = n_coarse
@@ -113,10 +117,6 @@ function fit_candidates(AggOp, B::AbstractVector; tol=1e-10)
         end
         for j in nzrange(A, i)
             row = A.rowval[j]
-            # Qx[row] *= scale
-            #@show k
-            # Qx[k] *= scale
-            # k += 1
             A.nzval[j] *= scale
         end
     end
@@ -127,12 +127,12 @@ end
 
 function fit_candidates(AggOp, B::AbstractMatrix; tol=1e-10)
     A = adjoint(AggOp)
-    n_fine, m = ndims(B) == 1 ? (length(B), 1) : size(B)
+    n_fine, m = size(B)
     n_fine2, n_agg = size(A)
     @assert n_fine2 == n_fine
     n_coarse = m * n_agg
     T = eltype(B)
-    Qs = spzeros(T, n_fine, n_coarse)
+    Qs = spzeros(T, n_fine, n_coarse) # TODO use CSR here as the algorithm becomes easier
     R = zeros(T, n_coarse, m)
 
     for agg in 1:n_agg
@@ -154,11 +154,11 @@ function fit_candidates(AggOp, B::AbstractMatrix; tol=1e-10)
                 Qs[rows[local_i], offset+local_j] = val
             end
         end
-        dropzeros!(Qs)
 
         R[offset+1:offset+r, :] .= Rj[1:r, :]
     end
 
+    dropzeros!(Qs)
     return Qs, R
 end
 

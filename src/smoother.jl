@@ -61,66 +61,6 @@ function (jacobi::Jacobi)(A, x, b)
     end
 end
 
-#=
-using KissThreading: tmap!
-
-struct ParallelJacobi{T,TX} <: Smoother
-    ω::T
-    temp::TX
-end
-ParallelJacobi(ω, x::TX) where {T, TX<:AbstractArray{T}} = ParallelJacobi{T,TX}(ω, similar(x))
-ParallelJacobi(x::TX, ω = 0.5) where {T, TX<:AbstractArray{T}} = ParallelJacobi{T,TX}(ω, similar(x))
-
-struct ParallelTemp{TX, TI}
-    temp::TX
-    col::TI
-end
-(ptemp::ParallelTemp)(i) = ptemp.temp[i, ptemp.col]
-
-struct ParallelJacobiMapper{TA, TX, TB, TTemp, TF, TI}
-    A::TA
-    x::TX
-    b::TB
-    temp::TTemp
-    ω::TF
-    col::TI
-end
-function (pjacobmapper::ParallelJacobiMapper)(i)
-    A = pjacobmapper.A
-    x = pjacobmapper.x
-    b = pjacobmapper.b
-    temp = pjacobmapper.temp
-    ω = pjacobmapper.ω
-    col = pjacobmapper.col
-
-    one = Base.one(eltype(A))
-    z = zero(eltype(A))
-    rsum = z
-    diag = z
-
-    for j in nzrange(A, i)
-        row = A.rowval[j]
-        val = A.nzval[j]
-
-        diag = ifelse(row == i, val, diag)
-        rsum += ifelse(row == i, z, val * temp[row, col])
-    end
-    xcand = (one - ω) * temp[i, col] + ω * ((b[i, col] - rsum) / diag)
-    
-    return ifelse(diag == 0, x[i, col], xcand)
-end
-
-function (jacobi::ParallelJacobi)(A, x, b)
-    ω = jacobi.ω
-    temp = jacobi.temp
-    for col = 1:size(x, 2)
-        @views tmap!(ParallelTemp(temp, col), x[1:size(A, 1), col], 1:size(A, 1))
-        @views tmap!(ParallelJacobiMapper(A, x, b, temp, ω, col), 
-            x[1:size(A, 1), col], 1:size(A, 1))
-    end
-end
-=#
-
 struct JacobiProlongation{T}
     ω::T
 end

@@ -4,6 +4,10 @@ struct Level{TA, TP, TR}
     R::TR
 end
 
+function Base.show(io::IO, l::Level)
+    print(io, "Level with R $(size(l.R)) | A $(size(l.A)) | P $(size(l.P))")
+end
+
 struct MultiLevel{S, Pre, Post, TA, TP, TR, TW}
     levels::Vector{Level{TA, TP, TR}}
     final_A::TA
