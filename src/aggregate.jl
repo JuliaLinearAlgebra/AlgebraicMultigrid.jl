@@ -1,14 +1,17 @@
 struct StandardAggregation
+    min_aggregate_size::Int
 end
 
-function (::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
+StandardAggregation() = StandardAggregation(1)
 
+function (agg::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
     n = size(S, 1)
     x = zeros(R, n)
     y = zeros(R, n)
 
     next_aggregate = 1
 
+    # Pass 1: Tentative aggregation
     for i = 1:n
         if x[i] != 0
             continue
@@ -28,41 +31,52 @@ function (::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
             end
         end
 
-        if !has_neighbors
+        if !has_neighbors # Mark isolated node
             x[i] = -n
         elseif !has_agg_neighbors
             x[i] = next_aggregate
-            y[next_aggregate] = i
-
+            aggregate_size = 0
             for j in nzrange(S, i)
                 row = S.rowval[j]
                 x[row] = next_aggregate
+                aggregate_size += 1
             end
 
-            next_aggregate += 1
+            # Reject aggregate if it is too small
+            if aggregate_size < agg.min_aggregate_size
+                x[i] = 0
+                for j in nzrange(S, i)
+                    row = S.rowval[j]
+                    x[row] = 0
+                end
+            else
+                y[next_aggregate] = i
+                next_aggregate += 1
+            end
         end
     end
 
-
-    # Pass 2
+    # Pass 2: Enlarge tentative aggregates
     for i = 1:n
+        # Skip marked node
         if x[i] != 0
             continue
         end
 
+        s_best = zero(eltype(S))
         for j in nzrange(S, i)
             row = S.rowval[j]
             x_row = x[row]
-            if x_row > 0
-                x[i] = -x_row
-                break
+            s_candidate = S.nzval[j]
+            if x_row != 0 && s_candidate > s_best# Assigned and stronger than previous best
+                x[i] = x_row
+                s_best = s_candidate
             end
         end
     end
 
+    # Shift assignments by 1 and apply the temporary assignments
     next_aggregate -= 1
-
-    # Pass 3
     for i = 1:n
         xi = x[i]
         if xi != 0
@@ -91,9 +105,9 @@ function (::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
     end
 
     y = y[1:next_aggregate]
-    M,N = (n, next_aggregate)
+    M, N = (n, next_aggregate)
 
-    # Some nodes not aggregated
+    # Pass 3: Aggregation of leftovers
     if minimum(x) == -1
         mask = x .!= -1
         I = collect(R, 1:n)[mask]

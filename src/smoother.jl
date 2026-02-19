@@ -184,16 +184,14 @@ function scale_rows!(ret, S, v)
 end
 scale_rows(S, v) = scale_rows!(deepcopy(S), S,  v)
 
-struct SOR{S} <: Smoother
-    ω::Float64
+struct SOR{S <: Sweep, T} <: Smoother
+    ω::T
     sweep::S
     iter::Int
 end
 
 SOR(ω; iter = 1) = SOR(ω, SymmetricSweep(), iter)
-SOR(ω, f::ForwardSweep) = SOR(ω, f, 1)
-SOR(ω, b::BackwardSweep) = SOR(ω, b, 1)
-SOR(ω, s::SymmetricSweep) = SOR(ω, s, 1)
+SOR(ω, s::Sweep) = SOR(ω, f, 1)
 
 # Inplace version
 function (config::SOR)(A, x, b)
@@ -207,26 +205,24 @@ end
 struct DiagonalIndices{Tv, Ti <: Integer}
     matrix::SparseMatrixCSC{Tv,Ti}
     diag::Vector{Ti}
-
-    function DiagonalIndices{Tv,Ti}(A::SparseMatrixCSC{Tv,Ti}) where {Tv,Ti}
-        # Check square?
-        diag = Vector{Ti}(undef, A.n)
-
-        for col = 1 : A.n
-            r1 = Int(A.colptr[col])
-            r2 = Int(A.colptr[col + 1] - 1)
-            r1 = searchsortedfirst(A.rowval, col, r1, r2, Base.Order.Forward)
-            if r1 > r2 || A.rowval[r1] != col || iszero(A.nzval[r1])
-                throw(LinearAlgebra.SingularException(col))
-            end
-            diag[col] = r1
-        end
-
-        new(A, diag)
-    end
 end
 
-DiagonalIndices(A::SparseMatrixCSC{Tv,Ti}) where {Tv,Ti} = DiagonalIndices{Tv,Ti}(A)
+function DiagonalIndices(A::SparseMatrixCSC{Tv,Ti}) where {Tv,Ti}
+    # Check square?
+    diag = Vector{Ti}(undef, A.n)
+
+    for col = 1 : A.n
+        r1 = Int(A.colptr[col])
+        r2 = Int(A.colptr[col + 1] - 1)
+        r1 = searchsortedfirst(A.rowval, col, r1, r2, Base.Order.Forward)
+        if r1 > r2 || A.rowval[r1] != col || iszero(A.nzval[r1])
+            throw(LinearAlgebra.SingularException(col))
+        end
+        diag[col] = r1
+    end
+
+    DiagonalIndices(A, diag)
+end
 
 function LinearAlgebra.ldiv!(y::AbstractVecOrMat{Tv}, D::DiagonalIndices{Tv,Ti}, x::AbstractVecOrMat{Tv}) where {Tv,Ti}
     for system_index in size(x, 2)
@@ -270,11 +266,13 @@ Forward substitution for the FastLowerTriangular type
 function forward_sub!(F::FastLowerTriangular, x::AbstractVecOrMat)
     A = F.matrix
 
+    T = eltype(A)
     for system_index in 1:size(x, 2)
         @inbounds for col = 1 : A.n
             # Solve for diagonal element
             idx = F.diag[col]
-            x[col, system_index] /= A.nzval[idx]
+            d   = A.nzval[idx]
+            x[col, system_index] /= d
 
             # Substitute next values involving x[col, system_index]
             for i = idx + 1 : (A.colptr[col + 1] - 1)
@@ -292,11 +290,13 @@ Forward substitution
 function forward_sub!(α, F::FastLowerTriangular, x::AbstractVecOrMat, β, y::AbstractVecOrMat)
     A = F.matrix
 
+    T = eltype(A)
     for system_index in 1:size(x, 2)
         @inbounds for col = 1 : A.n
             # Solve for diagonal element
             idx = F.diag[col]
-            x[col, system_index] = α * x[col, system_index] / A.nzval[idx] + β * y[col, system_index]
+            d   = A.nzval[idx]
+            x[col, system_index] = α * x[col, system_index] / d + β * y[col, system_index]
 
             # Substitute next values involving x[col, system_index]
             for i = idx + 1 : (A.colptr[col + 1] - 1)
@@ -305,7 +305,7 @@ function forward_sub!(α, F::FastLowerTriangular, x::AbstractVecOrMat, β, y::Ab
         end
     end
 
-    x
+    return x
 end
 
 
@@ -315,11 +315,13 @@ Backward substitution for the FastUpperTriangular type
 function backward_sub!(F::FastUpperTriangular, x::AbstractVecOrMat)
     A = F.matrix
 
+    T = eltype(A)
     for system_index in axes(x, 2)
         @inbounds for col = A.n : -1 : 1
             # Solve for diagonal element
             idx = F.diag[col]
-            x[col, system_index] /= A.nzval[idx]
+            d   = A.nzval[idx]
+            x[col, system_index] /= d
 
             # Substitute next values involving x[col, system_index]
             for i = A.colptr[col] : idx - 1
@@ -328,16 +330,18 @@ function backward_sub!(F::FastUpperTriangular, x::AbstractVecOrMat)
         end
     end
 
-    x
+    return x
 end
 
 function backward_sub!(α, F::FastUpperTriangular, x::AbstractVecOrMat, β, y::AbstractVecOrMat)
     A = F.matrix
 
+    T = eltype(A)
     for system_index in axes(x, 2)
         @inbounds for col = A.n : -1 : 1
             # Solve for diagonal element
             idx = F.diag[col]
+            d   = A.nzval[idx]
             x[col, system_index] = α * x[col, system_index] / A.nzval[idx] + β * y[col, system_index]
 
             # Substitute next values involving x[col, system_index]
@@ -347,7 +351,7 @@ function backward_sub!(α, F::FastUpperTriangular, x::AbstractVecOrMat, β, y::A
         end
     end
 
-    x
+    return x
 end
 
 """

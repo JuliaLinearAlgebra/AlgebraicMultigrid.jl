@@ -1,3 +1,7 @@
+using AlgebraicMultigrid, Test, JLD2
+import AlgebraicMultigrid as AMG
+using SparseArrays
+
 ## Test `B` as an argument for `SmoothedAggregationAMG`
 @testset "Different `B` as an argument for `SmoothedAggregationAMG` " begin
     A = poisson(100); 
@@ -192,50 +196,48 @@ end
     @testset "Linear elasticity 2D" begin
         # load linear elasticity test data
         @load "lin_elastic_2d.jld2" A b B
-        A = SparseMatrixCSC(A.m, A.n, A.colptr, A.rowval, A.nzval)
 
-        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10;B=B)
-        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10)
-
-        println("No NNS: final residual at iteration ", length(residuals_wonns), ": ", residuals_wonns[end])
+        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10,B=B)
         println("With NNS: final residual at iteration ", length(residuals_nns), ": ", residuals_nns[end])
+        @test A * x_nns ≈ b
+        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10)
+        println("No NNS: final residual at iteration ", length(residuals_wonns), ": ", residuals_wonns[end])
+        @test !(A * x_wonns ≈ b) && first(residuals_wonns) > last(residuals_wonns)
 
 
         #test QR factorization on linear elasticity
         aggregate = StandardAggregation()
         AggOp = aggregate(A)
         Q, R = fit_candidates(AggOp, B)
+
         # fit exactly and via projection
         @test B ≈ Q * R
         @test B ≈ Q * (Q' * B)
-
-        # Check convergence
-        @test !(A * x_wonns ≈ b)
-        @test A * x_nns ≈ b
-
     end
 
     @testset "fit_candidates on cantilever frame beam" begin
-        # Beam parameters
-        P = -1000.0    # Applied force at the end of the beam
-        n_elem = 10
-        E = 210e9      # Young's modulus
-        A = 1e-4       # Cross-section area (for axial)
-        I = 1e-6       # Moment of inertia (for bending)
-        L = 1.0        # Total length
-        A, b, B = cantilever_beam(P, E, A, I, L, n_elem)
+        A, b, B = begin
+            # Beam parameters
+            P = -1000.0    # Applied force at the end of the beam
+            n_elem = 10
+            E = 210e9      # Young's modulus
+            A = 1e-4       # Cross-section area (for axial)
+            I = 1e-6       # Moment of inertia (for bending)
+            L = 1.0        # Total length
+            cantilever_beam(P, E, A, I, L, n_elem)
+        end
         # test solution
         # Analaytical solution for cantilever beam
         u = A \ b
         @test u[end-1] ≈ (P * L^3) / (3 * E * I) # vertical disp. at the end of the beam
 
-
-        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10,B=B)
-        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10)
-
-        println("No NNS: final residual at iteration ", length(residuals_wonns), ": ", residuals_wonns[end])
+        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(); aggregate=StandardAggregation(3), log=true, reltol=1e-10, B=B, max_levels=2)
         println("With NNS: final residual at iteration ", length(residuals_nns), ": ", residuals_nns[end])
+        @test A * x_nns ≈ b
 
+        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(); aggregate=StandardAggregation(3), log=true, reltol=1e-10, max_levels=2)
+        println("No NNS: final residual at iteration ", length(residuals_wonns), ": ", residuals_wonns[end])
+        @test !(A * x_wonns ≈ b)
 
         # test QR factorization on bending beam
         # Aggregation
@@ -246,7 +248,5 @@ end
         @test B ≈ Q * (Q' * B)
 
         # Check convergence
-        @test !(A * x_wonns ≈ b)
-        @test A * x_nns ≈ b
     end
 end
