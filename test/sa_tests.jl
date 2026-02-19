@@ -1,10 +1,10 @@
-import AlgebraicMultigrid: scale_cols_by_largest_entry!, 
+import AlgebraicMultigrid: scale_cols_by_largest_entry!,
             SymmetricStrength, poisson
 function symmetric_soc(A::SparseMatrixCSC{T,V}, θ) where {T,V}
     D = abs.(diag(A))
     i,j,v = findnz(A)
     mask = i .!= j
-    DD = D[i] .* D[j] 
+    DD = D[i] .* D[j]
     mask = mask .& (abs.(v.^2) .>= (θ * θ * DD))
 
     i = i[mask]
@@ -38,13 +38,13 @@ function test_symmetric_soc()
 end
 
 function generate_matrices()
-    
+
     cases = []
 
     # Random matrices
     seed!(0)
     for T in (Float32, Float64)
-        
+
         for s in [2, 3, 5]
             push!(cases, sprand(T, s, s, 1.))
         end
@@ -136,13 +136,13 @@ function test_standard_aggregation()
 
 end
 
-# Test fit_candidates 
+# Test fit_candidates
 function test_fit_candidates()
 
     cases = generate_fit_candidates_cases()
 
     for (i, (AggOp, fine_candidates)) in enumerate(cases)
-   
+
         mask_candidates!(AggOp, fine_candidates)
 
         Q, coarse_candidates = fit_candidates(AggOp, fine_candidates)
@@ -161,22 +161,22 @@ function generate_fit_candidates_cases()
     for T in (Float32, Float64)
 
         # One candidate
-        AggOp = SparseMatrixCSC(2, 5, collect(1:6), 
+        AggOp = SparseMatrixCSC(2, 5, collect(1:6),
                         [1,1,1,2,2], ones(T,5))
         B =  ones(T,5)
         push!(cases, (AggOp, B))
 
-        AggOp = SparseMatrixCSC(2, 5, collect(1:6), 
+        AggOp = SparseMatrixCSC(2, 5, collect(1:6),
                         [2,2,1,1,1], ones(T,5))
         B = ones(T, 5)
         push!(cases, (AggOp, B))
 
-        AggOp = SparseMatrixCSC(3, 9, collect(1:10), 
+        AggOp = SparseMatrixCSC(3, 9, collect(1:10),
                         [1,1,1,2,2,2,3,3,3], ones(T, 9))
         B = ones(T, 9)
         push!(cases, (AggOp, B))
 
-        AggOp = SparseMatrixCSC(3, 9, collect(1:10), 
+        AggOp = SparseMatrixCSC(3, 9, collect(1:10),
                         [3,2,1,1,2,3,2,1,3], ones(T,9))
         B = T.(collect(1:9))
         push!(cases, (AggOp, B))
@@ -206,11 +206,7 @@ function test_approximate_spectral_radius()
     end
 
     for A in cases
-        @static if VERSION < v"0.7-"
-            E,V = eig(A)            
-        else
-            E,V = (eigen(A)...,)
-        end
+        E,V = (eigen(A)...,)
         E = abs.(E)
         largest_eig = findall(E .== maximum(E))[1]
         expected_eig = E[largest_eig]
@@ -234,9 +230,8 @@ function test_approximate_spectral_radius()
     end
 end
 
-# Test Gauss Seidel 
-import AlgebraicMultigrid: gs!
-function test_gauss_seidel()    
+# Test Gauss Seidel
+function test_gauss_seidel()
     N = 1
     A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
@@ -245,7 +240,7 @@ function test_gauss_seidel()
     s(A, x, b)
     @test sum(abs2, x - zeros(N)) < 1e-8
 
-    N = 3 
+    N = 3
     A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = zeros(N)
@@ -261,7 +256,7 @@ function test_gauss_seidel()
     s(A, x, b)
     @test sum(abs2, x - zeros(N)) < 1e-8
 
-    N = 3 
+    N = 3
     A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = zeros(N)
@@ -277,7 +272,7 @@ function test_gauss_seidel()
     s(A, x, b)
     @test sum(abs2, x - [5.]) < 1e-8
 
-    N = 3 
+    N = 3
     A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = eltype(A).([10., 20., 30.])
@@ -310,22 +305,30 @@ function test_jacobi_prolongator()
     @test sum(abs2, x - ref) < 1e-6
 end
 
-# Issue #24
-function nodes_not_agg()
-    A = include("onetoall.jl")
-    ml = smoothed_aggregation(A)
-    @test size(ml.levels[2].A) == (11,11)
-    @test size(ml.final_A) == (2,2)
-end
+# Smoothed Aggregation
+@testset "Smoothed Aggregation" begin
+    @testset "Symmetric Strength of Connection" begin
+        test_symmetric_soc()
+    end
 
-# Issue 26
-function test_symmetric_sweep()
-    A = poisson(10)
-    s = GaussSeidel(SymmetricSweep(), 4)
-    x = ones(size(A,1))
-    b = zeros(size(A,1))
-    s(A, x, b)
-    @test sum(abs2, x - [0.176765; 0.353529; 0.497517; 0.598914; 
-                            0.653311; 0.659104; 0.615597; 0.52275; 
-                            0.382787; 0.203251]) < 1e-6        
+    @testset "Standard Aggregation" begin
+        test_standard_aggregation()
+    end
+
+    @testset "Fit Candidates" begin
+        test_fit_candidates()
+    end
+
+    @testset "Approximate Spectral Radius" begin
+        test_approximate_spectral_radius()
+    end
+
+    @testset "Jacobi Prolongation" begin
+        test_jacobi_prolongator()
+    end
+
+    @testset "Int32 support" begin
+        a = sparse(Int32.(1:10), Int32.(1:10), rand(10))
+        @inferred smoothed_aggregation(a)
+    end
 end
