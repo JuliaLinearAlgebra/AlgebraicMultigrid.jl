@@ -17,7 +17,7 @@ GaussSeidel(s::SymmetricSweep) = GaussSeidel(s, 1)
 
 # Inplace version
 function (config::GaussSeidel)(A, x, b)
-    s = setup_smoother(config, A, x)
+    s = setup_smoother(config, A)
     ldiv!(x, s, b)
 end
 
@@ -135,7 +135,7 @@ SOR(ω, s::Sweep) = SOR(ω, f, 1)
 
 # Inplace version
 function (config::SOR)(A, x, b)
-    s = setup_smoother(config, A, x)
+    s = setup_smoother(config, A)
     ldiv!(x, s, b)
 end
 
@@ -341,7 +341,7 @@ struct ForwardGaussSeidelSmoother{Tv, Ti}
     iter::Int
 end
 
-function setup_smoother(config::GaussSeidel{<:ForwardSweep}, A, x)
+function setup_smoother(config::GaussSeidel{<:ForwardSweep}, A)
     D = DiagonalIndices(A)
     ForwardGaussSeidelSmoother(StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), config.iter)
 end
@@ -362,7 +362,7 @@ struct BackwardGaussSeidelSmoother{Tv, Ti}
     iter::Int
 end
 
-function setup_smoother(config::GaussSeidel{<:BackwardSweep}, A, x)
+function setup_smoother(config::GaussSeidel{<:BackwardSweep}, A)
     D = DiagonalIndices(A)
     BackwardGaussSeidelSmoother(FastUpperTriangular(A, D), StrictlyLowerTriangular(A, D), config.iter)
 end
@@ -385,9 +385,9 @@ struct SymmetricGaussSeidelSmoother{Tv, Ti}
     iter::Int
 end
 
-function setup_smoother(config::GaussSeidel{<:SymmetricSweep}, A, x)
+function setup_smoother(config::GaussSeidel{<:SymmetricSweep}, A)
     D = DiagonalIndices(A)
-    SymmetricGaussSeidelSmoother(
+    return SymmetricGaussSeidelSmoother(
         StrictlyLowerTriangular(A, D),
         StrictlyUpperTriangular(A, D),
         FastLowerTriangular(A, D),
@@ -418,9 +418,9 @@ struct ForwardSORSmoother{Tv, Ti, vecT, numT}
     ω::numT
 end
 
-function setup_smoother(config::SOR{<:ForwardSweep}, A, x)
+function setup_smoother(config::SOR{<:ForwardSweep}, A)
     D = DiagonalIndices(A)
-    ForwardSORSmoother(StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), similar(x), config.iter, config.ω)
+    return ForwardSORSmoother(StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), zeros(size(A, 2)), config.iter, config.ω)
 end
 
 function LinearAlgebra.ldiv!(x, s::ForwardSORSmoother, b)
@@ -445,9 +445,9 @@ struct BackwardSORSmoother{Tv, Ti, vecT, numT}
     ω::numT
 end
 
-function setup_smoother(config::SOR{<:BackwardSweep}, A, x)
+function setup_smoother(config::SOR{<:BackwardSweep}, A)
     D = DiagonalIndices(A)
-    BackwardSORSmoother(FastUpperTriangular(A, D), StrictlyLowerTriangular(A, D), similar(x), config.iter, config.ω)
+    return BackwardSORSmoother(FastUpperTriangular(A, D), StrictlyLowerTriangular(A, D), zeros(size(A, 2)), config.iter, config.ω)
 end
 
 function LinearAlgebra.ldiv!(x, s::BackwardSORSmoother, b)
@@ -474,9 +474,9 @@ struct SymmetricSORSmoother{Tv, Ti, vecT, numT}
     ω::numT
 end
 
-function setup_smoother(config::SOR{<:SymmetricSweep}, A, x)
+function setup_smoother(config::SOR{<:SymmetricSweep}, A)
     D = DiagonalIndices(A)
-    SymmetricSORSmoother(
+    return SymmetricSORSmoother(
         StrictlyLowerTriangular(A, D),
         StrictlyUpperTriangular(A, D),
         FastLowerTriangular(A, D),

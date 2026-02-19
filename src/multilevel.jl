@@ -1,19 +1,19 @@
-struct Level{TA, TP, TR}
+struct Level{TA, TP, TR, TPre, TPost}
     A::TA
     P::TP
     R::TR
+    presmoother::TPre
+    postsmoother::TPost
 end
 
 function Base.show(io::IO, l::Level)
     print(io, "Level with R $(size(l.R)) | A $(size(l.A)) | P $(size(l.P))")
 end
 
-struct MultiLevel{S, Pre, Post, TA, TP, TR, TW}
+struct MultiLevel{S, TA, TP, TR, TW}
     levels::Vector{Level{TA, TP, TR}}
     final_A::TA
     coarse_solver::S
-    presmoother::Pre
-    postsmoother::Post
     workspace::TW
 end
 
@@ -263,7 +263,7 @@ end
 
 function __solve!(x, ml, cycle::Cycle, b, lvl)
     A = ml.levels[lvl].A
-    @timeit_debug "Presmoother" ml.presmoother(A, x, b)
+    @timeit_debug "Presmoother" ldiv!(x, ml.levels[lvl].presmoother, b)
 
     res = ml.workspace.res_vecs[lvl]
     @timeit_debug "Residual eval" mul!(res, A, x)
@@ -283,7 +283,7 @@ function __solve!(x, ml, cycle::Cycle, b, lvl)
     @timeit_debug "Prolongation" mul!(res, ml.levels[lvl].P, coarse_x)
     x .+= res
 
-    @timeit_debug "Postsmoother" ml.postsmoother(A, x, b)
+    @timeit_debug "Postsmoother" ldiv!(x, ml.levels[lvl].postsmoother, b)
 
     x
 end

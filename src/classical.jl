@@ -25,17 +25,17 @@ function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}},
     residual!(w, size(A, 1))
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
-        @timeit_debug "extend_hierarchy!" A = extend_hierarchy_rs!(levels, strength, CF, A, symmetric)
+        @timeit_debug "extend_hierarchy!" A = extend_hierarchy_rs!(levels, strength, CF, A, presmoother, postsmoother, symmetric)
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
         residual!(w, size(A, 1))
     end
 
     @timeit_debug "coarse solver setup" cs = coarse_solver(A)
-    return MultiLevel(levels, A, cs, presmoother, postsmoother, w)
+    return MultiLevel(levels, A, cs, w)
 end
 
-function extend_hierarchy_rs!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, symmetric) where {Ti,Tv}
+function extend_hierarchy_rs!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother, symmetric) where {Ti,Tv}
     if symmetric
         At = A
     else
@@ -45,7 +45,13 @@ function extend_hierarchy_rs!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, s
     @timeit_debug "splitting" splitting = CF(S)
     @timeit_debug "interpolation" P, R = direct_interpolation(At, T, splitting)
     @timeit_debug "RAP" RAP = R * A * P
-    push!(levels, Level(A, P, R))
+
+    @timeit_debug "smoother setup" begin
+        pre = setup_smoother(presmoother, A)
+        post = setup_smoother(postsmoother, A)
+        push!(levels, Level(A, P, R, pre, post))
+    end
+
     return RAP
 end
 

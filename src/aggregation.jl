@@ -31,7 +31,7 @@ function smoothed_aggregation(A::TA,
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
         @timeit_debug "extend_hierarchy!" A, B, bsr_flag = extend_hierarchy_sa!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
-                                keep, A, B, symmetry, bsr_flag, verbose)
+                                keep, A, B, presmoother, postsmoother, symmetry, bsr_flag, verbose)
         size(A, 1) == 0 && break
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
@@ -39,7 +39,7 @@ function smoothed_aggregation(A::TA,
     end
 
     @timeit_debug "coarse solver setup" cs = coarse_solver(A)
-    @timeit_debug "ml setup" ml = MultiLevel(levels, A, cs, presmoother, postsmoother, w)
+    @timeit_debug "ml setup" ml = MultiLevel(levels, A, cs, w)
 
     if verbose
         @info ml
@@ -53,7 +53,7 @@ end
 
 function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
                             improve_candidates, diagonal_dominance,
-                            keep, A, B,
+                            keep, A, B, presmoother, postsmoother,
                             symmetry, bsr_flag, verbose = false)
 
     # Calculate strength of connection matrix
@@ -78,10 +78,15 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
 
     @timeit_debug "RAP" RAP = R * A * P
 
-    push!(levels, Level(A, P, R))
+    @timeit_debug "smoother setup" begin
+        pre = setup_smoother(presmoother, A)
+        post = setup_smoother(postsmoother, A)
+        push!(levels, Level(A, P, R, pre, post))
+    end
 
     bsr_flag = true
 
+    # RAP is the coarse matrix and B is the coarse null space
     RAP, B, bsr_flag
 end
 construct_R(::HermitianSymmetry, P) = P'

@@ -2,6 +2,8 @@
 using AlgebraicMultigrid, SparseArrays, LinearAlgebra
 using Test
 
+@testset "Regression Tests" begin
+
 @testset "Regression for issue #24" begin
     A = include("onetoall.jl")
     ml = smoothed_aggregation(A)
@@ -74,4 +76,6 @@ end
 
     xsa = solve(A, b, SmoothedAggregationAMG())
     @test A*xsa ≈ b rtol = 1.0e-8
+end
+
 end

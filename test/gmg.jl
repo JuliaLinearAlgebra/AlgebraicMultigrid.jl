@@ -8,19 +8,15 @@ function multigrid(A::TA; max_levels = 10, max_coarse = 10,
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
         AlgebraicMultigrid.residual!(w, size(A, 1))
-        A = extend!(levels, A)
+        A = extend!(levels, A, presmoother, postsmoother)
         AlgebraicMultigrid.coarse_x!(w, size(A, 1))
         AlgebraicMultigrid.coarse_b!(w, size(A, 1))
-        #=if size(A, 1) <= max_coarse
-            # push!(levels, Level(A,spzeros(T,0,0),spzeros(T,0,0)))
-            break
-        end=#
     end
 
-    MultiLevel(levels, A, Pinv(A), presmoother, postsmoother, w)
+    MultiLevel(levels, A, Pinv(A), w)
 end
 
-function extend!(levels, A::SparseMatrixCSC{Ti,Tv}) where {Ti,Tv}
+function extend!(levels, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother) where {Ti,Tv}
 
     size_F = size(A, 1)
     size_C = rem(size_F,2) == 0 ? div((size_F-1), 2) +1 : div((size_F-1), 2)
@@ -45,10 +41,9 @@ function extend!(levels, A::SparseMatrixCSC{Ti,Tv}) where {Ti,Tv}
 
     R = AlgebraicMultigrid.adjoint(P)
 
-    push!(levels, Level(A, P, R))
+    pre = AlgebraicMultigrid.setup_smoother(presmoother, A)
+    post = AlgebraicMultigrid.setup_smoother(postsmoother, A)
+    push!(levels, Level(A, P, R, pre, post))
 
     R * A * P
 end
-
-Base.show(io::IO, level::Level) = print(io, "Level")
-
