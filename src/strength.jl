@@ -81,6 +81,8 @@ function (s::SymmetricStrength{T})(A, bsr_flag = false) where {T}
     if bsr_flag && θ == 0
         S = SparseMatrixCSC(size(A)...,
                     A.colptr, A.rowval, ones(eltype(A), size(A.rowval)))
+        S.nzval .= abs.(S.nzval)
+        scale_cols_by_largest_entry!(S)
         return S, S
     else
         S = copy(A)
@@ -116,7 +118,7 @@ function (s::SymmetricStrength{T})(A, bsr_flag = false) where {T}
     dropzeros!(S)
 
     S.nzval .= abs.(S.nzval)
-    scale_cols_by_largest_entry!(S)    
+    scale_cols_by_largest_entry!(S)
 
     S, S
 end
