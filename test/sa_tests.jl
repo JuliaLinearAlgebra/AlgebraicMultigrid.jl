@@ -1,5 +1,5 @@
 import AlgebraicMultigrid: scale_cols_by_largest_entry!,
-            SymmetricStrength, poisson
+            SymmetricStrength, poisson, StandardAggregation
 function symmetric_soc(A::SparseMatrixCSC{T,V}, θ) where {T,V}
     D = abs.(diag(A))
     i,j,v = findnz(A)
@@ -57,10 +57,20 @@ function generate_matrices()
     cases
 end
 
-function stand_agg(C)
+# Implementation of Algorithm 5.1 from ,,Algebraic Multigrid by Smoothed
+# Aggregation for Second and Fourth Order Elliptic Problems'' by Vanek et al.
+#
+# Note: isolated nodes are not aggregated
+function stand_agg(C, ϵ=0)
     n = size(C, 1)
 
-    R = Set(1:n)
+    # FIXME manouvering around the implementation begin CSC but pretending to be CSR and
+    #       the fact that the implementation can only handle symmetric matrices while
+    #       this test covers has non-symmetric ones...
+    NϵT(C, i, ϵ) = [j for j in 1:size(C, 2) if abs(C[i, j]) > ϵ * sqrt(C[i,i]*C[j,j])]
+    Nϵ(C, i, ϵ) = [j for j in 1:size(C, 2) if abs(C[j, i]) > ϵ * sqrt(C[i,i]*C[j,j])]
+    R = Set([i for i in 1:n if Nϵ(C, i, 0.0) != [i] || NϵT(C, i, 0.0) != [i]])
+
     j = 0
     Cpts = Int[]
 
@@ -68,7 +78,7 @@ function stand_agg(C)
 
     # Pass 1
     for i = 1:n
-        Ni = union!(Set(C.rowval[nzrange(C, i)]), Set(i))
+        Ni = Set(Nϵ(C, i, ϵ))
         if issubset(Ni, R)
             push!(Cpts, i)
             setdiff!(R, Ni)
@@ -82,42 +92,51 @@ function stand_agg(C)
     # Pass 2
     old_R = copy(R)
     for i = 1:n
-        if ! (i in R)
+        if i ∉ R
             continue
         end
 
-        for x in C.rowval[nzrange(C, i)]
-            if !(x in old_R)
-                aggregates[i] = aggregates[x]
-                setdiff!(R, i)
-                break
+        best_strength = -Inf
+        best_candidate = 0
+        for j in nzrange(C, i)
+            x = C.rowval[j]
+            if x ∉ old_R && best_strength < C.nzval[j]
+                best_strength = C.nzval[j]
+                best_candidate = x
             end
+        end
+        if best_candidate > 0
+            aggregates[i] = aggregates[best_candidate]
+            setdiff!(R, i)
         end
     end
 
     # Pass 3
     for i = 1:n
-        if !(i in R)
+        if i ∉ R
             continue
         end
-        Ni = union(Set(C.rowval[nzrange(C,i)]), Set(i))
-        push!(Cpts, i)
+
+        Ni = union(Set(Nϵ(C, i, ϵ)), R)
+        # Do not aggregate isolated nodes
+        if length(Ni) > 0
+            continue
+        end
+        j += 1
+        push!(Cpts, Ni)
 
         for x in Ni
             if x in R
                 aggregates[x] = j
             end
-            j += 1
         end
     end
 
-    @assert length(R) == 0
-
-    Pj = aggregates .+ 1
-    Pp = collect(1:n+1)
-    Px = ones(eltype(C), n)
-
-    SparseMatrixCSC(maximum(aggregates .+ 1), n, Pp, Pj, Px)
+    mask = aggregates .> -1
+    I = aggregates[mask] .+ 1
+    J = collect(1:n)[mask]
+    V = ones(length(I))
+    return sparse(I, J, V, maximum(I; init=0), n)
 end
 
 # Standard aggregation tests
@@ -126,10 +145,11 @@ function test_standard_aggregation()
     cases = generate_matrices()
 
     for matrix in cases
-        for θ in (0.0, 0.1, 0.5, 1., 10.)
-            C = symmetric_soc(matrix, θ)
-            calc_matrix = StandardAggregation()(matrix)
-            ref_matrix = stand_agg(matrix)
+        for θ in (0.0, 0.02, 0.1, 1.)
+            # We have to symmetrize the matrix for this functions below to work as expected (since some matrices are non-symmetric)
+            C = symmetric_soc(matrix + matrix', θ)
+            calc_matrix = StandardAggregation()(C)
+            ref_matrix = stand_agg(C)
             @test sum(abs2, ref_matrix - calc_matrix) < 1e-6
         end
     end

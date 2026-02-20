@@ -64,14 +64,18 @@ function (agg::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
         end
 
         s_best = zero(eltype(S))
+        x_best = 0
         for j in nzrange(S, i)
             row = S.rowval[j]
             x_row = x[row]
             s_candidate = S.nzval[j]
-            if x_row != 0 && s_candidate > s_best# Assigned and stronger than previous best
-                x[i] = x_row
+            if x_row > 0 && s_candidate > s_best # Assigned and stronger than previous best
                 s_best = s_candidate
+                x_best = x_row
             end
+        end
+        if x_best > 0
+            x[i] = -x_best
         end
     end
 
