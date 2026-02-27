@@ -82,7 +82,7 @@ This package currently supports:
 
 AMG Styles:
 * Ruge-Stuben Solver
-* Smoothed Aggregation (SA)
+* Smoothed Aggregation (SA) with handling of user-provided near null spaces
 
 Strength of Connection:
 * Classical Strength of Connection
@@ -91,14 +91,16 @@ Strength of Connection:
 Smoothers:
 * Gauss Seidel (Symmetric, Forward, Backward)
 * Damped Jacobi
+* SOR and SSOR
 
 Cycling:
 * V, W and F cycles
 
 In the future, this package will support:
 1. Other splitting methods (like CLJP)
-2. SOR smoother
-3. AMLI cycles
+2. AMLI cycles
+3. Root-Node AMG
+4. Shared-memory parallelization of relevant internal functions
 
 #### Acknowledgements
 This package has been heavily inspired by the [`PyAMG`](http://github.com/pyamg/pyamg) project.
