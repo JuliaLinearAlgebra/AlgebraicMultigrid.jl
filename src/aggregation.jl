@@ -1,3 +1,8 @@
+function smoothed_aggregation(_A::Symmetric, args...; kwargs...)
+    A, symmetry = get_symmetry_and_data(_A)
+    return smoothed_aggregation(A, args...; symmetry, kwargs...)
+end
+
 function smoothed_aggregation(A::TA,
                         ::Type{Val{bs}}=Val{1};
                         B = nothing,
