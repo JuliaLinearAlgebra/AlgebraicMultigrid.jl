@@ -48,9 +48,6 @@ function smoothed_aggregation(A::TA,
     return ml
 end
 
-struct HermitianSymmetry
-end
-
 function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
                             improve_candidates, diagonal_dominance,
                             keep, A, B, presmoother, postsmoother,
@@ -79,8 +76,8 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
     @timeit_debug "RAP" RAP = R * A * P
 
     @timeit_debug "smoother setup" begin
-        pre = setup_smoother(presmoother, A)
-        post = setup_smoother(postsmoother, A)
+        pre = setup_smoother(presmoother, A, symmetry)
+        post = setup_smoother(postsmoother, A, symmetry)
         push!(levels, Level(A, P, R, pre, post))
     end
 
@@ -90,6 +87,7 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
     RAP, B, bsr_flag
 end
 construct_R(::HermitianSymmetry, P) = P'
+construct_R(::NoSymmetry, P) = P'
 
 function fit_candidates(AggOp, B::AbstractVector; tol=1e-10)
     A = adjoint(AggOp)

@@ -71,10 +71,10 @@ end
     A = sprand(N,N,0.001) + 5I
     b = ones(N)
 
-    xrs = solve(A, b, RugeStubenAMG())
+    xrs = solve(A, b, RugeStubenAMG(); symmetry = AlgebraicMultigrid.NoSymmetry())
     @test A*xrs ≈ b rtol = 1.0e-8
 
-    xsa = solve(A, b, SmoothedAggregationAMG())
+    xsa = solve(A, b, SmoothedAggregationAMG(); symmetry = AlgebraicMultigrid.NoSymmetry())
     @test A*xsa ≈ b rtol = 1.0e-8
 end
 

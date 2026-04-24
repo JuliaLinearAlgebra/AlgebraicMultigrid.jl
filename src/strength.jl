@@ -74,7 +74,7 @@ struct SymmetricStrength{T} <: Strength
 end
 SymmetricStrength() = SymmetricStrength(0.)
 
-function (s::SymmetricStrength{T})(A, bsr_flag = false) where {T}
+function (s::SymmetricStrength{T})(A::AbstractMatrix{<:Real}, bsr_flag = false) where {T}
 
     θ = s.θ
 
@@ -108,7 +108,7 @@ function (s::SymmetricStrength{T})(A, bsr_flag = false) where {T}
             row = A.rowval[j]
             val = A.nzval[j]
             if row != i
-                if val*val < eps_Aii * diags[row]
+                if real(val*val) < real(eps_Aii * diags[row])
                     S.nzval[j] = 0
                 end
             end
@@ -121,4 +121,8 @@ function (s::SymmetricStrength{T})(A, bsr_flag = false) where {T}
     scale_cols_by_largest_entry!(S)
 
     S, S
+end
+
+function (s::SymmetricStrength)(A::AbstractMatrix{<:Complex}, bsr_flag = false)
+    error("Complex-valued symmetric strength is not implemented.")
 end

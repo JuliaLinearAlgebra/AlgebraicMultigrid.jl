@@ -16,8 +16,8 @@ GaussSeidel(b::BackwardSweep) = GaussSeidel(b, 1)
 GaussSeidel(s::SymmetricSweep) = GaussSeidel(s, 1)
 
 # Inplace version
-function (config::GaussSeidel)(A, x, b)
-    s = setup_smoother(config, A)
+function (config::GaussSeidel)(A, x, b, symmetry = NoSymmetry())
+    s = setup_smoother(config, A, symmetry)
     ldiv!(x, s, b)
 end
 
@@ -131,11 +131,11 @@ struct SOR{S <: Sweep, T} <: Smoother
 end
 
 SOR(ω; iter = 1) = SOR(ω, SymmetricSweep(), iter)
-SOR(ω, s::Sweep) = SOR(ω, f, 1)
+SOR(ω, s::Sweep) = SOR(ω, s, 1)
 
 # Inplace version
-function (config::SOR)(A, x, b)
-    s = setup_smoother(config, A)
+function (config::SOR)(A, x, b, symmetry = NoSymmetry())
+    s = setup_smoother(config, A, symmetry)
     ldiv!(x, s, b)
 end
 
@@ -341,7 +341,7 @@ struct ForwardGaussSeidelSmoother{Tv, Ti}
     iter::Int
 end
 
-function setup_smoother(config::GaussSeidel{<:ForwardSweep}, A)
+function setup_smoother(config::GaussSeidel{<:ForwardSweep}, A, symmetry = NoSymmetry())
     D = DiagonalIndices(A)
     ForwardGaussSeidelSmoother(StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), config.iter)
 end
@@ -362,7 +362,7 @@ struct BackwardGaussSeidelSmoother{Tv, Ti}
     iter::Int
 end
 
-function setup_smoother(config::GaussSeidel{<:BackwardSweep}, A)
+function setup_smoother(config::GaussSeidel{<:BackwardSweep}, A, symmetry = NoSymmetry())
     D = DiagonalIndices(A)
     BackwardGaussSeidelSmoother(FastUpperTriangular(A, D), StrictlyLowerTriangular(A, D), config.iter)
 end
@@ -385,7 +385,7 @@ struct SymmetricGaussSeidelSmoother{Tv, Ti}
     iter::Int
 end
 
-function setup_smoother(config::GaussSeidel{<:SymmetricSweep}, A)
+function setup_smoother(config::GaussSeidel{<:SymmetricSweep}, A, symmetry = NoSymmetry())
     D = DiagonalIndices(A)
     return SymmetricGaussSeidelSmoother(
         StrictlyLowerTriangular(A, D),
@@ -410,6 +410,54 @@ function LinearAlgebra.ldiv!(x, s::SymmetricGaussSeidelSmoother, b)
     return nothing
 end
 
+# Fast version fully utilizing the symmetry of the matrix.
+struct FastSymmetricGaussSeidelSmoother{Tv, Ti}
+    A::SparseMatrixCSC{Tv, Ti}
+    diag::Vector{Ti}
+    iter::Int
+end
+
+function setup_smoother(config::GaussSeidel{<:SymmetricSweep}, A, symmetry::HermitianSymmetry)
+    D = DiagonalIndices(A)
+    FastSymmetricGaussSeidelSmoother(A, D.diag, config.iter)
+end
+
+function LinearAlgebra.ldiv!(x, s::FastSymmetricGaussSeidelSmoother, b)
+    A = s.A
+    diag = s.diag
+    T = eltype(x)
+    z = zero(T)
+    for _ in 1:s.iter
+        @inbounds for col in 1:size(x, 2)
+            for i = 1:A.n
+                d_idx = diag[i]
+                rsum = z
+                for j = A.colptr[i] : d_idx - 1
+                    rsum += A.nzval[j] * x[A.rowval[j], col]
+                end
+                for j = d_idx + 1 : A.colptr[i + 1] - 1
+                    rsum += A.nzval[j] * x[A.rowval[j], col]
+                end
+                x[i, col] = (b[i, col] - rsum) / A.nzval[d_idx]
+            end
+        end
+        @inbounds for col in 1:size(x, 2)
+            for i = A.n:-1:1
+                d_idx = diag[i]
+                rsum = z
+                for j = A.colptr[i] : d_idx - 1
+                    rsum += A.nzval[j] * x[A.rowval[j], col]
+                end
+                for j = d_idx + 1 : A.colptr[i + 1] - 1
+                    rsum += A.nzval[j] * x[A.rowval[j], col]
+                end
+                x[i, col] = (b[i, col] - rsum) / A.nzval[d_idx]
+            end
+        end
+    end
+    return nothing
+end
+
 struct ForwardSORSmoother{Tv, Ti, vecT, numT}
     U::StrictlyUpperTriangular{Tv, Ti}
     L::FastLowerTriangular{Tv, Ti}
@@ -418,7 +466,7 @@ struct ForwardSORSmoother{Tv, Ti, vecT, numT}
     ω::numT
 end
 
-function setup_smoother(config::SOR{<:ForwardSweep}, A)
+function setup_smoother(config::SOR{<:ForwardSweep}, A, symmetry = NoSymmetry())
     D = DiagonalIndices(A)
     return ForwardSORSmoother(StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), zeros(size(A, 2)), config.iter, config.ω)
 end
@@ -445,7 +493,7 @@ struct BackwardSORSmoother{Tv, Ti, vecT, numT}
     ω::numT
 end
 
-function setup_smoother(config::SOR{<:BackwardSweep}, A)
+function setup_smoother(config::SOR{<:BackwardSweep}, A, symmetry = NoSymmetry())
     D = DiagonalIndices(A)
     return BackwardSORSmoother(FastUpperTriangular(A, D), StrictlyLowerTriangular(A, D), zeros(size(A, 2)), config.iter, config.ω)
 end
@@ -474,7 +522,7 @@ struct SymmetricSORSmoother{Tv, Ti, vecT, numT}
     ω::numT
 end
 
-function setup_smoother(config::SOR{<:SymmetricSweep}, A)
+function setup_smoother(config::SOR{<:SymmetricSweep}, A, symmetry = NoSymmetry())
     D = DiagonalIndices(A)
     return SymmetricSORSmoother(
         StrictlyLowerTriangular(A, D),
@@ -503,6 +551,61 @@ function LinearAlgebra.ldiv!(x, s::SymmetricSORSmoother, b)
         backward_sub!(s.ω, s.U, s.tmp, one(T) - s.ω, x)
 
         copy!(x, s.tmp)
+    end
+    return nothing
+end
+
+# Fast version fully utilizing the symmetry of the matrix.
+struct FastSymmetricSORSmoother{Tv, Ti, numT}
+    A::SparseMatrixCSC{Tv, Ti}
+    diag::Vector{Ti}
+    iter::Int
+    ω::numT
+    tmp::Vector{Tv}
+end
+
+function setup_smoother(config::SOR{<:SymmetricSweep}, A, symmetry::HermitianSymmetry)
+    D = DiagonalIndices(A)
+    FastSymmetricSORSmoother(A, D.diag, config.iter, config.ω, Vector{eltype(A)}(undef, size(A, 1)))
+end
+
+function LinearAlgebra.ldiv!(x, s::FastSymmetricSORSmoother, b)
+    A = s.A
+    diag = s.diag
+    ω = s.ω
+    T = eltype(x)
+    z = zero(T)
+    for _ in 1:s.iter
+        for col in 1:size(x, 2)
+            # Save x_old so the backward sweep can use it for the lower triangle.
+            @inbounds for i = 1:A.n
+                s.tmp[i] = x[i, col]
+            end
+            # Forward sweep: x_half[i] = (1-ω)*x_old[i] + ω*(b[i] - lower*x_half - upper*x_old) / d
+            @inbounds for i = 1:A.n
+                d_idx = diag[i]
+                rsum = z
+                for j = A.colptr[i] : d_idx - 1
+                    rsum += A.nzval[j] * x[A.rowval[j], col]   # x_half (already updated)
+                end
+                for j = d_idx + 1 : A.colptr[i + 1] - 1
+                    rsum += A.nzval[j] * x[A.rowval[j], col]   # x_old (not yet updated)
+                end
+                x[i, col] = (one(T) - ω) * s.tmp[i] + ω * (b[i, col] - rsum) / A.nzval[d_idx]
+            end
+            # Backward sweep: x_new[i] = (1-ω)*x_old[i] + ω*(b[i] - lower*x_old - upper*x_new) / d
+            @inbounds for i = A.n:-1:1
+                d_idx = diag[i]
+                rsum = z
+                for j = A.colptr[i] : d_idx - 1
+                    rsum += A.nzval[j] * s.tmp[A.rowval[j]]    # x_old
+                end
+                for j = d_idx + 1 : A.colptr[i + 1] - 1
+                    rsum += A.nzval[j] * x[A.rowval[j], col]   # x_new (already updated)
+                end
+                x[i, col] = (one(T) - ω) * s.tmp[i] + ω * (b[i, col] - rsum) / A.nzval[d_idx]
+            end
+        end
     end
     return nothing
 end
