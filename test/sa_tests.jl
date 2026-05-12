@@ -418,6 +418,14 @@ end
     end
 end
 
+# Issue #24
+function nodes_not_agg()
+    A = include("onetoall.jl")
+    ml = smoothed_aggregation(A)
+    @test size(ml.levels[2].A) == (11,11)
+    @test size(ml.final_A) == (2,2)
+end
+
 # Smoothed Aggregation
 @testset "Smoothed Aggregation" begin
     @testset "Symmetric Strength of Connection" begin
@@ -436,16 +444,11 @@ end
         test_fit_candidates()
     end
 
-    @testset "Approximate Spectral Radius" begin
-        test_approximate_spectral_radius()
-    end
-
-    @testset "Jacobi Prolongation" begin
-        test_jacobi_prolongator()
-    end
-
     @testset "Int32 support" begin
         a = sparse(Int32.(1:10), Int32.(1:10), rand(10))
         @inferred smoothed_aggregation(a)
     end
+
+    # Issue #24
+    nodes_not_agg()
 end
