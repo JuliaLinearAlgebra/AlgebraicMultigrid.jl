@@ -145,7 +145,7 @@ function test_standard_aggregation_corner_cases()
     # it only counts the 1 neighbour and misses the seed, collapsing everything into
     # one aggregate instead.
     S_chain = sparse([1,2,2,3,3,4],[2,1,3,2,4,3], ones(Float64,6), 4, 4)
-    AggOp_chain = StandardAggregation(2)(S_chain)
+    AggOp_chain = StandardAggregation()(S_chain)
     @test size(AggOp_chain, 1) == 2                          # exactly 2 aggregates
     @test all(vec(sum(AggOp_chain, dims=1)) .== 1)           # every node in exactly one
 
@@ -173,6 +173,16 @@ function test_standard_aggregation_corner_cases()
     ml_diag = smoothed_aggregation(A_diag)
     @test length(ml_diag) == 1
     @test size(ml_diag.final_A) == (20, 20)
+
+    # Intermediate isolated node: a 5-node chain where node 3 has a large diagonal
+    # that severs the connection between aggregates {1,2} and {4,5}.
+    # Verifies AggOp has a zero column for node 3 and the full pipeline solves.
+    A_iso = spdiagm(-1 => fill(-0.5, 4), 0 => [1.0,1.0,100.0,1.0,1.0],
+                                          1 => fill(-0.5, 4))
+    S_iso5, _ = SymmetricStrength(0.25)(A_iso)
+    AggOp_iso5 = StandardAggregation()(S_iso5)
+    @test size(AggOp_iso5, 1) == 2              # exactly 2 aggregates
+    @test nnz(AggOp_iso5[:, 3]) == 0           # node 3 isolated (zero column)
 
 end
 
@@ -235,6 +245,24 @@ function generate_fit_candidates_cases()
 
         AggOp = SparseMatrixCSC(3, 9, collect(1:10),
                         [3,2,1,1,2,3,2,1,3], ones(T,9))
+        B = T.(collect(1:9))
+        push!(cases, (AggOp, B))
+
+        # Isolated intermediate node: fine node 3 has no aggregate (zero column).
+        # AggOp is 2×5, colptr has zero-width at column 3.
+        # Regression test for Qx allocation bug: for non-unit B the norm of
+        # aggregate 2 (nodes {4,5}) was computed incorrectly when fine-node
+        # indices exceeded nnz(AggOp).
+        AggOp = SparseMatrixCSC(2, 5, Int[1,2,3,3,4,5],
+                        Int[1,1,2,2], ones(T,4))
+        B = T.([1, 1, 5, 2, 3])
+        push!(cases, (AggOp, B))
+
+        # Two isolated intermediate nodes: fine nodes 3 and 7 have no aggregate.
+        # Aggregates: agg 1 = {nodes 1,2}, agg 2 = {nodes 4,5,6}, agg 3 = {nodes 8,9}.
+        # AggOp is 3×9 with zero-width columns at positions 3 and 7.
+        AggOp = SparseMatrixCSC(3, 9, Int[1,2,3,3,4,5,6,6,7,8],
+                        Int[1,1,2,2,2,3,3], ones(T,7))
         B = T.(collect(1:9))
         push!(cases, (AggOp, B))
     end

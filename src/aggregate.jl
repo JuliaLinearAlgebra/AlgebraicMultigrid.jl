@@ -1,13 +1,17 @@
+"""
+    StandardAggregation()
+
+Implementation of Algorithm 5.1 from ,,Algebraic Multigrid by Smoothed
+Aggregation for Second and Fourth Order Elliptic Problems'' by Vanek et al. (1996).
+
+Note that isolated nodes are not aggregated.
+"""
 struct StandardAggregation
-    min_aggregate_size::Int
 end
 
-StandardAggregation() = StandardAggregation(1)
-
-function (agg::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
+function (::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
     n = size(S, 1)
     x = zeros(R, n)
-    y = zeros(R, n)
 
     next_aggregate = 1
 
@@ -35,26 +39,14 @@ function (agg::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
             x[i] = -n
         elseif !has_agg_neighbors
             x[i] = next_aggregate
-            aggregate_size = 1  # count the seed node i itself
             for j in nzrange(S, i)
                 row = S.rowval[j]
                 if row != i
                     x[row] = next_aggregate
-                    aggregate_size += 1
                 end
             end
 
-            # Reject aggregate if it is too small
-            if aggregate_size < agg.min_aggregate_size
-                x[i] = 0
-                for j in nzrange(S, i)
-                    row = S.rowval[j]
-                    x[row] = 0
-                end
-            else
-                y[next_aggregate] = i
-                next_aggregate += 1
-            end
+            next_aggregate += 1
         end
     end
 
@@ -81,36 +73,45 @@ function (agg::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
         end
     end
 
-    # Shift assignments by 1 and apply the temporary assignments
+    # Record which nodes are still unaggregated after Pass 1 and Pass 2 *before*
+    # the 0-based shift below.  After the shift, accepted aggregate-0 nodes also
+    # have x[i] == 0, so we cannot use x[i] == 0 as an "unaggregated" sentinel
+    # inside the subsequent Pass 3 loop.
+    unagg = x .== 0
+
+    # Shift all Pass 1 / Pass 2 assignments from 1-indexed to 0-indexed.
     next_aggregate -= 1
     for i = 1:n
         xi = x[i]
-        if xi != 0
-            if xi > 0
-                x[i] = xi - 1
-            elseif xi == -n
-                x[i] = -1
-            else
-                x[i] = -xi - 1
-            end
-            continue
+        if xi > 0
+            x[i] = xi - 1
+        elseif xi == -n
+            x[i] = -1
+        elseif xi < 0  # Pass 2 tentative: x[i] = -x_best
+            x[i] = -xi - 1
         end
+        # unagg[i] == true nodes keep x[i] == 0; handled below.
+    end
+
+    # Pass 3: form new aggregates from nodes that were not reached in Pass 1 or 2.
+    # Each seed i pulls in every unaggregated neighbour (identified via `unagg`,
+    # not x[row] == 0, to avoid confusion with the 0-indexed aggregate-0).
+    for i = 1:n
+        unagg[i] || continue
 
         x[i] = next_aggregate
-        y[next_aggregate + 1] = i
 
         for j in nzrange(S, i)
             row = S.rowval[j]
-
-            if x[row] == 0
+            if unagg[row]
                 x[row] = next_aggregate
+                unagg[row] = false
             end
         end
-
+        unagg[i] = false
         next_aggregate += 1
     end
 
-    y = y[1:next_aggregate]
     M, N = (n, next_aggregate)
 
     # Pass 3: Aggregation of leftovers

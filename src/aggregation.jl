@@ -165,11 +165,7 @@ function fit_candidates(AggOp, B::AbstractVector; tol=1e-10)
     n_col = n_coarse
 
     R = zeros(eltype(B), n_coarse)
-    Qx = zeros(eltype(B), nnz(A))
-    # copy!(Qx, B)
-    for i = 1:size(Qx, 1)
-        Qx[i] = B[i]
-    end
+    Qx = copy(B)
     # copy!(A.nzval, B)
     for i = 1:n_col
         for j in nzrange(A,i)
@@ -177,7 +173,6 @@ function fit_candidates(AggOp, B::AbstractVector; tol=1e-10)
             A.nzval[j] = B[row]
         end
     end
-    k = 1
     for i = 1:n_col
         norm_i = norm_col(A, Qx, i)
         threshold_i = tol * norm_i
@@ -238,11 +233,7 @@ end
 function norm_col(A, Qx, i)
     s = zero(eltype(A))
     for j in nzrange(A, i)
-        if A.rowval[j] > length(Qx)
-            val = 1
-        else
-            val = Qx[A.rowval[j]]
-        end
+        val = Qx[A.rowval[j]]
         # val = A.nzval[A.rowval[j]]
         s += val*val
     end
