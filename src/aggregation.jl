@@ -94,10 +94,12 @@ function smoothed_aggregation(A::TA,
     end
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
+        prev_n_levels = length(levels)
         @timeit_debug "extend_hierarchy!" A, B, bsr_flag = extend_hierarchy_sa!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
                                 keep, A, B, presmoother, postsmoother, symmetry, bsr_flag, verbose)
-        size(A, 1) == 0 && break
+        # Break if no coarsening happened (all nodes isolated) or degenerate coarse matrix
+        length(levels) == prev_n_levels && break
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
         residual!(w, size(A, 1))
@@ -128,8 +130,11 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
     # Aggregation operator
     @timeit_debug "aggregation" AggOp = aggregate(S)
 
+    # Cannot coarsen further if no aggregates were formed (e.g. all nodes isolated)
+    size(AggOp, 1) == 0 && return A, B, bsr_flag
+
     # Improve candidates
-    b = zeros(size(A,1),size(B,2))
+    b = zeros(eltype(A), size(A,1),size(B,2))
     @timeit_debug "improve candidates" improve_candidates(A, B, b)
     @timeit_debug "fit candidates" T, B = fit_candidates(AggOp, B)
 

@@ -35,11 +35,13 @@ function (agg::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
             x[i] = -n
         elseif !has_agg_neighbors
             x[i] = next_aggregate
-            aggregate_size = 0
+            aggregate_size = 1  # count the seed node i itself
             for j in nzrange(S, i)
                 row = S.rowval[j]
-                x[row] = next_aggregate
-                aggregate_size += 1
+                if row != i
+                    x[row] = next_aggregate
+                    aggregate_size += 1
+                end
             end
 
             # Reject aggregate if it is too small
@@ -112,7 +114,7 @@ function (agg::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
     M, N = (n, next_aggregate)
 
     # Pass 3: Aggregation of leftovers
-    if minimum(x) == -1
+    if isempty(x) || minimum(x) == -1
         mask = x .!= -1
         I = collect(R, 1:n)[mask]
         J = x[mask] .+ R(1)

@@ -64,7 +64,7 @@ end
 function stand_agg(C, ϵ=0)
     n = size(C, 1)
 
-    # FIXME manouvering around the implementation begin CSC but pretending to be CSR and
+    # FIXME maneuvering around the implementation begin CSC but pretending to be CSR and
     #       the fact that the implementation can only handle symmetric matrices while
     #       this test covers has non-symmetric ones...
     NϵT(C, i, ϵ) = [j for j in 1:size(C, 2) if abs(C[i, j]) > ϵ * sqrt(C[i,i]*C[j,j])]
@@ -117,19 +117,14 @@ function stand_agg(C, ϵ=0)
             continue
         end
 
-        Ni = union(Set(Nϵ(C, i, ϵ)), R)
-        # Do not aggregate isolated nodes
-        if length(Ni) > 0
-            continue
+        Ni = intersect(Set(Nϵ(C, i, ϵ)), R)
+        push!(Ni, i)  # always include the seed node itself
+        push!(Cpts, i)
+        setdiff!(R, Ni)
+        for x in Ni
+            aggregates[x] = j
         end
         j += 1
-        push!(Cpts, Ni)
-
-        for x in Ni
-            if x in R
-                aggregates[x] = j
-            end
-        end
     end
 
     mask = aggregates .> -1
@@ -139,6 +134,47 @@ function stand_agg(C, ϵ=0)
     return sparse(I, J, V, maximum(I; init=0), n)
 end
 
+
+
+# Corner case tests for StandardAggregation
+function test_standard_aggregation_corner_cases()
+
+    # Off-by-one in aggregate_size: a 4-node chain whose strength matrix has no
+    # diagonal entries should form 2 aggregates of size 2 when min_aggregate_size=2.
+    # The buggy code (aggregate_size starts at 0) rejects the first candidate because
+    # it only counts the 1 neighbour and misses the seed, collapsing everything into
+    # one aggregate instead.
+    S_chain = sparse([1,2,2,3,3,4],[2,1,3,2,4,3], ones(Float64,6), 4, 4)
+    AggOp_chain = StandardAggregation(2)(S_chain)
+    @test size(AggOp_chain, 1) == 2                          # exactly 2 aggregates
+    @test all(vec(sum(AggOp_chain, dims=1)) .== 1)           # every node in exactly one
+
+    # Disconnected graph: two independent 3-node chains.
+    # Both components must be fully aggregated without mixing.
+    rows_d = [1,2,2,3,4,5,5,6]; cols_d = [2,1,3,2,5,4,6,5]
+    S_disc = sparse(rows_d, cols_d, ones(Float64,8), 6, 6) + spdiagm(0 => ones(6))
+    ref_disc  = stand_agg(S_disc)
+    calc_disc = StandardAggregation()(S_disc)
+    @test sum(abs2, calc_disc - ref_disc) < 1e-6
+
+    # All nodes isolated (diagonal-only strength matrix) → nothing is aggregated.
+    S_iso = spdiagm(0 => ones(Float64, 5))
+    @test sum(abs2, StandardAggregation()(S_iso) - stand_agg(S_iso)) < 1e-6
+    @test nnz(StandardAggregation()(S_iso)) == 0
+
+    # Empty 0×0 strength matrix must not crash (guards minimum() on empty array).
+    S_empty = spzeros(Float64, 0, 0)
+    AggOp_empty = StandardAggregation()(S_empty)
+    @test size(AggOp_empty) == (0, 0)
+
+    # smoothed_aggregation on a large diagonal matrix (all nodes isolated at every level)
+    # must return a valid 1-level hierarchy rather than crashing at solve time.
+    A_diag = spdiagm(0 => 2.0 * ones(Float64, 20))
+    ml_diag = smoothed_aggregation(A_diag)
+    @test length(ml_diag) == 1
+    @test size(ml_diag.final_A) == (20, 20)
+
+end
 
 # Standard aggregation tests
 function test_standard_aggregation()
@@ -362,6 +398,10 @@ end
 
     @testset "Standard Aggregation" begin
         test_standard_aggregation()
+    end
+
+    @testset "Standard Aggregation Corner Cases" begin
+        test_standard_aggregation_corner_cases()
     end
 
     @testset "Fit Candidates" begin
