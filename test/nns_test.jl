@@ -194,12 +194,17 @@ end
         @load "lin_elastic_2d.jld2" A b B
         A = SparseMatrixCSC(A.m, A.n, A.colptr, A.rowval, A.nzval)
 
-        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10;B=B)
         x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10)
+        println("SA without NNS: final residual at iteration ", length(residuals_wonns), ": ", residuals_wonns[end])
+        @test !(A * x_wonns ≈ b)
 
-        println("No NNS: final residual at iteration ", length(residuals_wonns), ": ", residuals_wonns[end])
-        println("With NNS: final residual at iteration ", length(residuals_nns), ": ", residuals_nns[end])
+        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(), log=true, reltol=1e-10;B=B)
+        println("SA with NNS: final residual at iteration ", length(residuals_nns), ": ", residuals_nns[end])
+        @test A * x_nns ≈ b
 
+        x_nns, residuals_nns = solve(A, b, RootNodeAMG(), log=true, reltol=1e-10, B=B)
+        println("Root-Node with NNS: final residual at iteration ", length(residuals_nns), ": ", residuals_nns[end])
+        @test A * x_nns ≈ b
 
         #test QR factorization on linear elasticity
         aggregate = StandardAggregation()
@@ -210,8 +215,6 @@ end
         @test B ≈ Q * (Q' * B)
 
         # Check convergence
-        @test !(A * x_wonns ≈ b)
-        @test A * x_nns ≈ b
 
     end
 
@@ -236,6 +239,9 @@ end
         println("No NNS: final residual at iteration ", length(residuals_wonns), ": ", residuals_wonns[end])
         println("With NNS: final residual at iteration ", length(residuals_nns), ": ", residuals_nns[end])
 
+        x_nns, residuals_nns = solve(A, b, RootNodeAMG(); aggregate=StandardAggregation(), log=true, reltol=1e-10, B=B, max_levels=2)
+        println("Root-Node with NNS: final residual at iteration ", length(residuals_nns), ": ", residuals_nns[end])
+        @test A * x_nns ≈ b
 
         # test QR factorization on bending beam
         # Aggregation

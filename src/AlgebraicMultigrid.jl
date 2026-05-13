@@ -29,13 +29,16 @@ export GaussSeidel, SymmetricSweep, ForwardSweep, BackwardSweep,
         JacobiProlongation, SOR
 
 include("multilevel.jl")
-export RugeStubenAMG, SmoothedAggregationAMG
+export RugeStubenAMG, SmoothedAggregationAMG, RootNodeAMG
 
 include("classical.jl")
 export ruge_stuben
 
 include("aggregate.jl")
 export StandardAggregation
+
+include("rootnode.jl")
+export root_node_amg
 
 include("aggregation.jl")
 export fit_candidates, smoothed_aggregation

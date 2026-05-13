@@ -8,6 +8,7 @@ using FileIO
 using Random: seed!
 
 include("sa_tests.jl")
+include("root_node_tests.jl")
 include("cycle_tests.jl")
 include("nns_test.jl")
 
