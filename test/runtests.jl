@@ -348,6 +348,9 @@ for sz in [ (10,10), (20,20), (50,50)]
 
     strategy = KrylovJL_CG(precs = SmoothedAggregationPreconBuilder())
     @test solve(prob, strategy, atol=1.0e-14) ≈ u0 rtol = 1.0e-8
+
+    strategy = KrylovJL_CG(precs = RootNodePreconBuilder())
+    @test solve(prob, strategy, atol=1.0e-14) ≈ u0 rtol = 1.0e-7
 end
 
 end

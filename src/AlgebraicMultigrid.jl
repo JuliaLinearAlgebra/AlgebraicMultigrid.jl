@@ -47,6 +47,6 @@ include("preconditioner.jl")
 export aspreconditioner
 
 include("precs.jl")
-export SmoothedAggregationPreconBuilder, RugeStubenPreconBuilder
+export SmoothedAggregationPreconBuilder, RugeStubenPreconBuilder, RootNodePreconBuilder
 
 end # module

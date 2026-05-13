@@ -36,3 +36,23 @@ end
 function (b::RugeStubenPreconBuilder)(A::AbstractSparseMatrixCSC, p)
     return (aspreconditioner(ruge_stuben(SparseMatrixCSC(A), Val{b.blocksize}; b.kwargs...)), I)
 end
+
+
+"""
+   RootNodePreconBuilder(;blocksize=1, kwargs...)
+
+Return callable object constructing a  left algebraic multigrid preconditioner after Ruge & Stüben
+to be used with the `precs` API of LinearSolve.
+"""
+struct RootNodePreconBuilder{Tk}
+    blocksize::Int
+    kwargs::Tk
+end
+
+function RootNodePreconBuilder(; blocksize = 1, kwargs...)
+    return RootNodePreconBuilder(blocksize, kwargs)
+end
+
+function (b::RootNodePreconBuilder)(A::AbstractSparseMatrixCSC, p)
+    return (aspreconditioner(root_node_amg(SparseMatrixCSC(A), Val{b.blocksize}; b.kwargs...)), I)
+end
