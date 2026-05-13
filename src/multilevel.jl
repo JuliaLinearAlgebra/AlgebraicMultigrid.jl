@@ -294,6 +294,7 @@ abstract type AMGAlg end
 
 struct RugeStubenAMG  <: AMGAlg end
 struct SmoothedAggregationAMG  <: AMGAlg end
+struct RootNodeAMG  <: AMGAlg end
 
 function solve(A::AbstractMatrix, b::Vector, s::AMGAlg, args...; kwargs...)
     solt = init(s, A, b, args...; kwargs...)
@@ -304,6 +305,9 @@ function init(::RugeStubenAMG, A, b, args...; kwargs...)
 end
 function init(sa::SmoothedAggregationAMG, A, b; kwargs...)
     AMGSolver(smoothed_aggregation(A; kwargs...), b)
+end
+function init(::RootNodeAMG, A, b; kwargs...)
+    AMGSolver(root_node_amg(A; kwargs...), b)
 end
 function solve!(solt::AMGSolver, args...; kwargs...) 
     _solve(solt.ml, solt.b, args...; kwargs...)   
