@@ -231,11 +231,11 @@ end
         u = A \ b
         @test u[end-1] ≈ (P * L^3) / (3 * E * I) # vertical disp. at the end of the beam
 
-        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(); aggregate=StandardAggregation(3), log=true, reltol=1e-10, B=B, max_levels=2)
+        x_nns, residuals_nns = solve(A, b, SmoothedAggregationAMG(); log=true, reltol=1e-10, B=B, max_levels=2)
         println("With NNS: final residual at iteration ", length(residuals_nns), ": ", residuals_nns[end])
         @test A * x_nns ≈ b
 
-        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(); aggregate=StandardAggregation(3), log=true, reltol=1e-10, max_levels=2)
+        x_wonns, residuals_wonns = solve(A, b, SmoothedAggregationAMG(); log=true, reltol=1e-10, max_levels=2)
         println("No NNS: final residual at iteration ", length(residuals_wonns), ": ", residuals_wonns[end])
         @test !(A * x_wonns ≈ b)
 

@@ -29,7 +29,7 @@ function ruge_stuben(A::TA,
     end
 
     @timeit_debug "coarse solver setup" cs = coarse_solver(A)
-    return MultiLevel(levels, A, cs, w)
+    return MultiLevel(levels, A, cs, presmoother, postsmoother, w)
 end
 
 function extend_hierarchy_rs!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother, symmetry) where {Ti,Tv}

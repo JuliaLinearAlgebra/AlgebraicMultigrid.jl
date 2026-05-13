@@ -1,4 +1,4 @@
-import AlgebraicMultigrid: Level, MultiLevel, GaussSeidel
+import AlgebraicMultigrid: Level, MultiLevel, GaussSeidel, HermitianSymmetry
 
 function multigrid(A::TA; max_levels = 10, max_coarse = 10,
                     presmoother = GaussSeidel(), postsmoother = GaussSeidel()) where {T,V,TA<:SparseMatrixCSC{T,V}}
@@ -13,7 +13,7 @@ function multigrid(A::TA; max_levels = 10, max_coarse = 10,
         AlgebraicMultigrid.coarse_b!(w, size(A, 1))
     end
 
-    MultiLevel(levels, A, Pinv(A), w)
+    MultiLevel(levels, A, Pinv(A), presmoother, postsmoother, w)
 end
 
 function extend!(levels, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother) where {Ti,Tv}
@@ -41,8 +41,8 @@ function extend!(levels, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother) w
 
     R = AlgebraicMultigrid.adjoint(P)
 
-    pre = AlgebraicMultigrid.setup_smoother(presmoother, A)
-    post = AlgebraicMultigrid.setup_smoother(postsmoother, A)
+    pre = AlgebraicMultigrid.setup_smoother(presmoother, A, HermitianSymmetry())
+    post = AlgebraicMultigrid.setup_smoother(postsmoother, A, HermitianSymmetry())
     push!(levels, Level(A, P, R, pre, post))
 
     R * A * P

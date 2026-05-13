@@ -20,7 +20,7 @@ b = ones(N)
     SOR(0.5, SymmetricSweep(), 100),
 ]
     x = copy(x0)
-    smoother(A, x, b)
+    smoother(A, x, b, AlgebraicMultigrid.NoSymmetry())
     @test A*x ≈ b
 end
 

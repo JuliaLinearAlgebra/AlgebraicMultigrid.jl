@@ -1,3 +1,68 @@
+struct JacobiProlongation{T}
+    ω::T
+end
+
+struct DiagonalWeighting
+end
+struct LocalWeighting
+end
+
+function (j::JacobiProlongation)(A, T, S, B, degree = 1, weighting = LocalWeighting())
+    D_inv_S = weight(weighting, A, j.ω)
+    P = T
+    for i = 1:degree
+        P = P - (D_inv_S * P)
+    end
+    P
+end
+
+function weight(::DiagonalWeighting, S, ω)
+    D_inv = 1 ./ diag(S)
+    D_inv_S = scale_rows(S, D_inv)
+    (eltype(S)(ω) / approximate_spectral_radius(D_inv_S)) * D_inv_S
+    # (ω) * D_inv_S
+end
+
+function weight(::LocalWeighting, S, ω)
+    #=D = abs.(S) * ones(eltype(S), size(S, 1))
+    D_inv = 1 ./ D[find(D)]
+    D_inv_S = scale_rows(S, D_inv)
+    eltype(S)(ω) * D_inv_S=#
+    D = zeros(eltype(S), size(S,1))
+    for i = 1:size(S, 1)
+        for j in nzrange(S, i)
+            row = S.rowval[j]
+            val = S.nzval[j]
+            D[row] += abs(val)
+        end
+    end
+    for i = 1:size(D, 1)
+        if D[i] != 0
+            D[i] = 1/D[i]
+        end
+    end
+    D_inv_S = scale_rows(S, D)
+    # eltype(S)(ω) * D_inv_S
+    rmul!(D_inv_S, eltype(S)(ω))
+end
+
+function scale_rows!(ret, S, v)
+    n = size(S, 1)
+    for i = 1:n
+        for j in nzrange(S, i)
+            row = S.rowval[j]
+            ret.nzval[j] *= v[row]
+        end
+    end
+    ret
+end
+scale_rows(S, v) = scale_rows!(deepcopy(S), S,  v)
+
+function smoothed_aggregation(_A::Union{Symmetric, Hermitian}, args...; kwargs...)
+    A, symmetry = get_symmetry_and_data(_A)
+    return smoothed_aggregation(A, args...; symmetry, kwargs...)
+end
+
 function smoothed_aggregation(A::TA,
                         ::Type{Val{bs}}=Val{1};
                         B = nothing,
@@ -39,7 +104,7 @@ function smoothed_aggregation(A::TA,
     end
 
     @timeit_debug "coarse solver setup" cs = coarse_solver(A)
-    @timeit_debug "ml setup" ml = MultiLevel(levels, A, cs, w)
+    ml = MultiLevel(levels, A, cs,  presmoother, postsmoother, w)
 
     if verbose
         @info ml

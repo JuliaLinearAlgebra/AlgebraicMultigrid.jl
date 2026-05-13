@@ -10,10 +10,12 @@ function Base.show(io::IO, l::Level)
     print(io, "Level with R $(size(l.R)) | A $(size(l.A)) | P $(size(l.P))")
 end
 
-struct MultiLevel{S, TA, TP, TR, TW}
+struct MultiLevel{S, Pre, Post, TA, TP, TR, TW}
     levels::Vector{Level{TA, TP, TR}}
     final_A::TA
     coarse_solver::S
+    presmoother::Pre   # Deprecated. Use the level's smoother.
+    postsmoother::Post # Deprecated. Use the level's smoother.
     workspace::TW
 end
 
