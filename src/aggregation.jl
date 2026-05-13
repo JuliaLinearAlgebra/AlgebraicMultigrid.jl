@@ -1,8 +1,3 @@
-function smoothed_aggregation(_A::Symmetric, args...; kwargs...)
-    A, symmetry = get_symmetry_and_data(_A)
-    return smoothed_aggregation(A, args...; symmetry, kwargs...)
-end
-
 function smoothed_aggregation(A::TA,
                         ::Type{Val{bs}}=Val{1};
                         B = nothing,
@@ -56,7 +51,7 @@ end
 function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
                             improve_candidates, diagonal_dominance,
                             keep, A, B, presmoother, postsmoother,
-                            symmetry, bsr_flag, verbose = false)
+                            symmetry, bsr_flag, verbose)
 
     # Calculate strength of connection matrix
     @timeit_debug "strength" if symmetry isa HermitianSymmetry
