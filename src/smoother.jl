@@ -194,7 +194,7 @@ function DiagonalIndices(A::SparseMatrixCSC{Tv,Ti}) where {Tv,Ti}
 end
 
 function LinearAlgebra.ldiv!(y::AbstractVecOrMat{Tv}, D::DiagonalIndices{Tv,Ti}, x::AbstractVecOrMat{Tv}) where {Tv,Ti}
-    for system_index in size(x, 2)
+    for system_index in axes(x, 2)
         @inbounds for row = 1 : D.matrix.n
             y[row, system_index] = x[row, system_index] / D.matrix.nzval[D.diag[row]]
         end
@@ -224,18 +224,12 @@ struct StrictlyLowerTriangular{Tv,Ti}
     diag::DiagonalIndices{Tv,Ti}
 end
 
-struct OffDiagonal{Tv,Ti}
-    matrix::SparseMatrixCSC{Tv,Ti}
-    diag::DiagonalIndices{Tv,Ti}
-end
-
 """
 Forward substitution for the FastLowerTriangular type
 """
 function forward_sub!(F::FastLowerTriangular, x::AbstractVecOrMat)
     A = F.matrix
 
-    T = eltype(A)
     for system_index in 1:size(x, 2)
         @inbounds for col = 1 : A.n
             # Solve for diagonal element
@@ -259,7 +253,6 @@ Forward substitution
 function forward_sub!(α, F::FastLowerTriangular, x::AbstractVecOrMat, β, y::AbstractVecOrMat)
     A = F.matrix
 
-    T = eltype(A)
     for system_index in 1:size(x, 2)
         @inbounds for col = 1 : A.n
             # Solve for diagonal element
@@ -284,7 +277,6 @@ Backward substitution for the FastUpperTriangular type
 function backward_sub!(F::FastUpperTriangular, x::AbstractVecOrMat)
     A = F.matrix
 
-    T = eltype(A)
     for system_index in axes(x, 2)
         @inbounds for col = A.n : -1 : 1
             # Solve for diagonal element
@@ -305,13 +297,12 @@ end
 function backward_sub!(α, F::FastUpperTriangular, x::AbstractVecOrMat, β, y::AbstractVecOrMat)
     A = F.matrix
 
-    T = eltype(A)
     for system_index in axes(x, 2)
         @inbounds for col = A.n : -1 : 1
             # Solve for diagonal element
             idx = F.diag[col]
             d   = A.nzval[idx]
-            x[col, system_index] = α * x[col, system_index] / A.nzval[idx] + β * y[col, system_index]
+            x[col, system_index] = α * x[col, system_index] / d + β * y[col, system_index]
 
             # Substitute next values involving x[col, system_index]
             for i = A.colptr[col] : idx - 1
@@ -428,11 +419,11 @@ end
 function LinearAlgebra.ldiv!(x, s::SymmetricGaussSeidelSmoother, b)
     T = eltype(x)
     for i in 1:s.iter
-        # x ← U \ (-L * x + b)
+        # x ← L \ (-U * x + b)
         gauss_seidel_multiply!(-one(T), s.sU, x, one(T), b, x)
         forward_sub!(s.L, x)
 
-        # x ← L \ (-U * x + b)
+        # x ← U \ (-L * x + b)
         gauss_seidel_multiply!(-one(T), s.sL, x, one(T), b, x)
         backward_sub!(s.U, x)
     end

@@ -4,8 +4,8 @@ end
 struct HermitianSymmetry
 end
 
-function get_symmetry_and_data(_A)
-    if _A isa Symmetric && Ti <: Real
+function get_symmetry_and_data(_A::AbstractMatrix{T}) where {T}
+    if _A isa Symmetric && T <: Real
         A = _A.data
         symmetry = HermitianSymmetry()
     elseif _A isa Hermitian
