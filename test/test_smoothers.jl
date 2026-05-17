@@ -32,11 +32,11 @@ end
 
     x_fast = copy(x0)
     s_fast = AlgebraicMultigrid.setup_smoother(smoother, A_sym, AlgebraicMultigrid.HermitianSymmetry())
-    ldiv!(x_fast, s_fast, b)
+    AlgebraicMultigrid.smooth!(x_fast, s_fast, b)
 
     x_general = copy(x0)
     s_general = AlgebraicMultigrid.setup_smoother(smoother, A_sym, AlgebraicMultigrid.NoSymmetry())
-    ldiv!(x_general, s_general, b)
+    AlgebraicMultigrid.smooth!(x_general, s_general, b)
 
     @test x_fast ≈ x_general
 end
