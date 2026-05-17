@@ -76,6 +76,16 @@ strategy = KrylovJL_CG(precs = SmoothedAggregationPreconBuilder())
 sol = solve(prob, strategy, atol=1.0e-14)
 ```
 
+## Custom smoothers
+
+To use a custom smoother please dispatch
+```julia
+setup_smoother(config::Smoother, A::AbstractMatrix, symmetry)::S
+smooth!(x, smoother::S, b)
+```
+Where `S` denotes the smoothers cache which also must hold the matrix A.
+`smooth!` performs relaxation steps updating the current iterate x in-place:  x ← x + S⁻¹(b − A·x).
+
 ## Features and Roadmap
 
 This package currently supports:

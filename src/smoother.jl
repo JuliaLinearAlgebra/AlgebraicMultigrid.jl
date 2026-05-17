@@ -1,3 +1,12 @@
+"""
+    Smoother
+
+Must dispatch on two methods:
+    setup_smoother(config::Smoother, A::AbstractMatrix, symmetry)::S
+    smooth!(x, smoother::S, b)
+
+Where `S` denotes the smoothers cache which also must hold the matrix A.
+"""
 abstract type Smoother end
 abstract type Sweep end
 struct SymmetricSweep <: Sweep
@@ -13,12 +22,28 @@ end
 GaussSeidel(; iter = 1) = GaussSeidel(SymmetricSweep(), iter)
 GaussSeidel(s::Sweep; iter = 1) = GaussSeidel(s, iter)
 
-# Inplace version
+"""
+    smooth!(x, smoother, b)
+
+Perform relaxation steps updating the current iterate x in-place:  x ← x + S⁻¹(b − A·x)
+Where the smoother stores both, A and an object to apply the smoother action.
+"""
+smooth!
+
+# Inplace version of smooth!
 function (config::Smoother)(A, x, b, symmetry = HermitianSymmetry())
     s = setup_smoother(config, A, symmetry)
-    LinearAlgebra.ldiv!(x, s, b)
+    smooth!(x, s, b)
+    return nothing
 end
 
+"""
+    setup_smoother(config::Smoother, A::AbstractMatrix, symmetry)
+
+Setup the smoother for matrix A and some symmetry hint. This step here pre-allocates
+necessary buffers and precomputes necessary information to efficiently apply the smoother
+repeatedly.
+"""
 function setup_smoother(config::Smoother, A, symmetry)
     error("setup_smoother(config, matrix, symmetry) not dispatched for smoother type $(typeof(config)) and symmetry type $(typeof(symmetry))")
 end
@@ -33,7 +58,7 @@ function setup_smoother(config::GaussSeidel, A, symmetry::HermitianSymmetry)
     return FastGSSmoother(A, config.sweep, config.iter)
 end
 
-function LinearAlgebra.ldiv!(x, s::FastGSSmoother{S}, b) where {S}
+function smooth!(x, s::FastGSSmoother{S}, b) where {S}
     (; A, iter) = s
     for i in 1:iter
         if S === ForwardSweep || S === SymmetricSweep
@@ -68,7 +93,6 @@ struct Jacobi{T,TX} <: Smoother
     ω::T
     temp::TX
     iter::Int
-    force_symmetry::Bool # Operate as if the matrix is symmetric.
 end
 Jacobi(ω; iter=1) = Jacobi(ω, nothing, iter)
 Jacobi(ω, x::TX; iter=1) where {T, TX<:AbstractArray{T}} = Jacobi{T,TX}(ω, similar(x), iter)
@@ -86,7 +110,7 @@ function setup_smoother(config::Jacobi, A, symmetry)
     return FastJacobiSmoother(A, config.iter, temp, config.ω)
 end
 
-function LinearAlgebra.ldiv!(x, jacobi::FastJacobiSmoother, b)
+function smooth!(x, jacobi::FastJacobiSmoother, b)
 
     ω = jacobi.ω
     one = Base.one(eltype(A))
@@ -138,7 +162,7 @@ function setup_smoother(config::SOR, A, symmetry::HermitianSymmetry)
     return FastSORSmoother(A, config.sweep, config.iter, config.ω)
 end
 
-function LinearAlgebra.ldiv!(x, sor::FastSORSmoother{S}, b) where {S<:Sweep}
+function smooth!(x, sor::FastSORSmoother{S}, b) where {S<:Sweep}
     (; A) = sor
     for i in 1:sor.iter
         if S === ForwardSweep || S === SymmetricSweep
@@ -193,7 +217,7 @@ function DiagonalIndices(A::SparseMatrixCSC{Tv,Ti}) where {Tv,Ti}
     DiagonalIndices(A, diag)
 end
 
-function LinearAlgebra.ldiv!(y::AbstractVecOrMat{Tv}, D::DiagonalIndices{Tv,Ti}, x::AbstractVecOrMat{Tv}) where {Tv,Ti}
+function smooth!(y::AbstractVecOrMat{Tv}, D::DiagonalIndices{Tv,Ti}, x::AbstractVecOrMat{Tv}) where {Tv,Ti}
     for system_index in axes(x, 2)
         @inbounds for row = 1 : D.matrix.n
             y[row, system_index] = x[row, system_index] / D.matrix.nzval[D.diag[row]]
@@ -366,7 +390,7 @@ function setup_smoother(config::GaussSeidel{<:ForwardSweep}, A, symmetry::NoSymm
     ForwardGaussSeidelSmoother(StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), config.iter)
 end
 
-function LinearAlgebra.ldiv!(x, s::ForwardGaussSeidelSmoother, b)
+function smooth!(x, s::ForwardGaussSeidelSmoother, b)
     T = eltype(x)
     for i in 1:s.iter
         # x ← L \ (-U * x + b)
@@ -387,7 +411,7 @@ function setup_smoother(config::GaussSeidel{<:BackwardSweep}, A, symmetry::NoSym
     BackwardGaussSeidelSmoother(FastUpperTriangular(A, D), StrictlyLowerTriangular(A, D), config.iter)
 end
 
-function LinearAlgebra.ldiv!(x, s::BackwardGaussSeidelSmoother, b)
+function smooth!(x, s::BackwardGaussSeidelSmoother, b)
     T = eltype(x)
     for i in 1:s.iter
         # x ← U \ (-L * x + b)
@@ -416,7 +440,7 @@ function setup_smoother(config::GaussSeidel{<:SymmetricSweep}, A, symmetry::NoSy
     )
 end
 
-function LinearAlgebra.ldiv!(x, s::SymmetricGaussSeidelSmoother, b)
+function smooth!(x, s::SymmetricGaussSeidelSmoother, b)
     T = eltype(x)
     for i in 1:s.iter
         # x ← L \ (-U * x + b)
@@ -443,7 +467,7 @@ function setup_smoother(config::SOR{<:ForwardSweep}, A, symmetry::NoSymmetry)
     return ForwardSORSmoother(StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), zeros(size(A, 2)), config.iter, config.ω)
 end
 
-function LinearAlgebra.ldiv!(x, s::ForwardSORSmoother, b)
+function smooth!(x, s::ForwardSORSmoother, b)
     T = eltype(x)
     for i in 1:s.iter
         # tmp = b - U * x
@@ -470,7 +494,7 @@ function setup_smoother(config::SOR{<:BackwardSweep}, A, symmetry::NoSymmetry)
     return BackwardSORSmoother(FastUpperTriangular(A, D), StrictlyLowerTriangular(A, D), zeros(size(A, 2)), config.iter, config.ω)
 end
 
-function LinearAlgebra.ldiv!(x, s::BackwardSORSmoother, b)
+function smooth!(x, s::BackwardSORSmoother, b)
     T = eltype(x)
     for i in 1:s.iter
         # tmp = b - U * x
@@ -507,7 +531,7 @@ function setup_smoother(config::SOR{<:SymmetricSweep}, A, symmetry::NoSymmetry)
     )
 end
 
-function LinearAlgebra.ldiv!(x, s::SymmetricSORSmoother, b)
+function smooth!(x, s::SymmetricSORSmoother, b)
     T = eltype(x)
     for i in 1:s.iter
         # tmp = b - U * x

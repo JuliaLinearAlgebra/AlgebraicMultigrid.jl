@@ -265,7 +265,7 @@ end
 
 function __solve!(x, ml, cycle::Cycle, b, lvl)
     A = ml.levels[lvl].A
-    @timeit_debug "Presmoother" ldiv!(x, ml.levels[lvl].presmoother, b)
+    @timeit_debug "Presmoother" smooth!(x, ml.levels[lvl].presmoother, b)
 
     res = ml.workspace.res_vecs[lvl]
     @timeit_debug "Residual eval" mul!(res, A, x)
@@ -285,7 +285,7 @@ function __solve!(x, ml, cycle::Cycle, b, lvl)
     @timeit_debug "Prolongation" mul!(res, ml.levels[lvl].P, coarse_x)
     x .+= res
 
-    @timeit_debug "Postsmoother" ldiv!(x, ml.levels[lvl].postsmoother, b)
+    @timeit_debug "Postsmoother" smooth!(x, ml.levels[lvl].postsmoother, b)
 
     x
 end
