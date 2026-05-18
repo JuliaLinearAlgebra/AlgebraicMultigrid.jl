@@ -1,9 +1,10 @@
-struct Level{TA, TP, TR, TPre, TPost}
+struct Level{TA, TP, TR}
     A::TA
     P::TP
     R::TR
-    presmoother::TPre
-    postsmoother::TPost
+    # Making these concrete triggers https://github.com/JuliaLang/julia/issues/61839
+    presmoother #::TPre
+    postsmoother #::TPost
 end
 
 function Base.show(io::IO, l::Level)
