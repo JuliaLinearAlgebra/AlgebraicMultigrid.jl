@@ -1,6 +1,7 @@
 # In this file we test the build-in smoothers
 using AlgebraicMultigrid, SparseArrays, LinearAlgebra
 using Test
+import AlgebraicMultigrid as AMG
 
 @testset "Smoothers" begin
 
@@ -12,6 +13,7 @@ x0 = rand(N)
 b = ones(N)
 
 @testset "Mildly non-symmetric matrix with $smoother" for smoother in [
+    AMG.Jacobi(1 / 6, iter=500),
     GaussSeidel(ForwardSweep(), 100),
     GaussSeidel(BackwardSweep(), 100),
     GaussSeidel(SymmetricSweep(), 100),
@@ -25,8 +27,9 @@ b = ones(N)
 end
 
 @testset "Symmetric matrix with $smoother"  for smoother in [
-    GaussSeidel(SymmetricSweep(), 2),
-    SOR(0.5, SymmetricSweep(), 2),
+    AMG.Jacobi(4 / 5, iter=2),
+    GaussSeidel(SymmetricSweep(), iter=2),
+    SOR(0.5; iter=2),
 ]
     A_sym = poisson(N)
 

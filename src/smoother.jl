@@ -98,26 +98,24 @@ Jacobi(ω; iter=1) = Jacobi(ω, nothing, iter)
 Jacobi(ω, x::TX; iter=1) where {T, TX<:AbstractArray{T}} = Jacobi{T,TX}(ω, similar(x), iter)
 Jacobi(x::TX, ω=0.5; iter=1) where {T, TX<:AbstractArray{T}} = Jacobi{T,TX}(ω, similar(x), iter)
 
-struct FastJacobiSmoother{S <: Sweep, Tv, Ti, TX, numT}
+struct FastJacobiSmoother{Tv, Ti, TX, numT}
     A::SparseMatrixCSC{Tv, Ti}
     iter::Int
     temp::TX
     ω::numT
 end
 
-function setup_smoother(config::Jacobi, A, symmetry)
+function setup_smoother(config::Jacobi, A, symmetry::HermitianSymmetry)
     temp = config.temp === nothing ? zeros(eltype(A), size(A,1)) : config.temp
     return FastJacobiSmoother(A, config.iter, temp, config.ω)
 end
 
 function smooth!(x, jacobi::FastJacobiSmoother, b)
 
-    ω = jacobi.ω
+    (; A, ω, temp, iter) = jacobi
     one = Base.one(eltype(A))
-    temp = jacobi.temp
     z = zero(eltype(A))
-
-    for _ in 1:jacobi.iter
+    for _ in 1:iter
         @inbounds for col = 1:size(x, 2)
             for i = 1:size(A, 1)
                 temp[i] = x[i, col]
@@ -136,7 +134,37 @@ function smooth!(x, jacobi::FastJacobiSmoother, b)
                 end
 
                 xcand = (one - ω) * temp[i] + ω * ((b[i, col] - rsum) / diag)
-                x[i, col] = ifelse(diag == 0, x[i, col], xcand)
+                x[i, col] = ifelse(diag == z, x[i, col], xcand)
+            end
+        end
+    end
+end
+
+
+struct JacobiSmoother{Tv, Ti, TX, TX2, numT}
+    A::SparseMatrixCSC{Tv, Ti}
+    iter::Int
+    temp::TX
+    diagvals::TX2
+    ω::numT
+end
+
+function setup_smoother(config::Jacobi, A, symmetry::NoSymmetry)
+    temp = config.temp === nothing ? zeros(eltype(A), size(A,1)) : config.temp
+    return JacobiSmoother(A, config.iter, temp, collect(diag(A)), config.ω)
+end
+
+function smooth!(x, jacobi::JacobiSmoother, b)
+    (; A, iter, temp, diagvals, ω) = jacobi
+    for _ in 1:iter
+        for col = 1:size(x, 2)
+            mul!(temp, A, @view(x[:, col]))
+            temp .-= @view(b[:, col])
+            for i in 1:size(x, 1)
+                d = diagvals[i]
+                if !iszero(d)
+                    x[i, col] -= ω * temp[i] / d
+                end
             end
         end
     end
