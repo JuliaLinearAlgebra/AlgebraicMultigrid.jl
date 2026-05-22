@@ -57,6 +57,28 @@ struct LinearSolveWrapper{A <: LinearSolve.SciMLLinearSolveAlgorithm} <: CoarseS
 end
 (p::LinearSolveWrapper)(A::AbstractMatrix) = LinearSolveWrapperInternal(A, p.alg)
 
+
+"""
+    QRSolver{F} <: CoarseSolver
+
+Coarse solver using Julia's built-in factorizations via `qr()`.
+"""
+struct QRSolver{F} <: CoarseSolver
+    factorization::F
+    function QRSolver(A)
+        fact = qr(A)
+        new{typeof(fact)}(fact)
+    end
+end
+Base.show(io::IO, p::QRSolver) = print(io, "QRSolver")
+
+function (solver::QRSolver)(x, b)
+    # Handle multiple RHS efficiently
+    for i ∈ 1:size(b, 2)
+        # Use backslash - Julia's factorizations are optimized for this
+        x[:, i] = solver.factorization \ b[:, i]
+    end
+end
+
 # Guess the best coarse solver based on the matrix type
-_default_coarse_solver(A) = Pinv
-_default_coarse_solver(A::AbstractSparseMatrix{<:Float64}) = LinearSolveWrapper(LinearSolve.UMFPACKFactorization())
+_default_coarse_solver(A) = QRSolver
