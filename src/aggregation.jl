@@ -136,7 +136,6 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
     @timeit_debug "improve candidates" improve_candidates(A, B, b)
     @timeit_debug "fit candidates" T, B = fit_candidates(AggOp, B)
 
-    @info size(T, 1)
     @timeit_debug "restriction setup" begin
         P = smooth(A, T, S, B)
         size(P, 2) == 0 && return A, B, true, true
