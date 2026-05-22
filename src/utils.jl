@@ -1,3 +1,23 @@
+struct NoSymmetry
+end
+
+struct HermitianSymmetry
+end
+
+function get_symmetry_and_data(_A::AbstractMatrix{T}) where {T}
+    if _A isa Symmetric && T <: Real
+        A = _A.data
+        symmetry = HermitianSymmetry()
+    elseif _A isa Hermitian
+        A = _A.data
+        symmetry = HermitianSymmetry()
+    else
+        symmetry = NoSymmetry()
+        A = _A
+    end
+    return A, symmetry
+end
+
 function adjoint(A)
     copy(A')
 end

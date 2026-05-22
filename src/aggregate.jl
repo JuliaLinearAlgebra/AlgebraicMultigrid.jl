@@ -91,7 +91,7 @@ function (::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
     end
 
     y = y[1:next_aggregate]
-    M,N = (n, next_aggregate)
+    M, N = (n, next_aggregate)
 
     # Some nodes not aggregated
     if minimum(x) == -1

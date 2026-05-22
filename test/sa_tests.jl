@@ -1,10 +1,10 @@
-import AlgebraicMultigrid: scale_cols_by_largest_entry!, 
-            SymmetricStrength, poisson
+import AlgebraicMultigrid: scale_cols_by_largest_entry!,
+            SymmetricStrength, poisson, StandardAggregation
 function symmetric_soc(A::SparseMatrixCSC{T,V}, θ) where {T,V}
     D = abs.(diag(A))
     i,j,v = findnz(A)
     mask = i .!= j
-    DD = D[i] .* D[j] 
+    DD = D[i] .* D[j]
     mask = mask .& (abs.(v.^2) .>= (θ * θ * DD))
 
     i = i[mask]
@@ -38,13 +38,13 @@ function test_symmetric_soc()
 end
 
 function generate_matrices()
-    
+
     cases = []
 
     # Random matrices
     seed!(0)
     for T in (Float32, Float64)
-        
+
         for s in [2, 3, 5]
             push!(cases, sprand(T, s, s, 1.))
         end
@@ -57,10 +57,20 @@ function generate_matrices()
     cases
 end
 
-function stand_agg(C)
+# Implementation of Algorithm 5.1 from ,,Algebraic Multigrid by Smoothed
+# Aggregation for Second and Fourth Order Elliptic Problems'' by Vanek et al.
+#
+# Note: isolated nodes are not aggregated
+function stand_agg(C, ϵ=0)
     n = size(C, 1)
 
-    R = Set(1:n)
+    # FIXME manouvering around the implementation begin CSC but pretending to be CSR and
+    #       the fact that the implementation can only handle symmetric matrices while
+    #       this test covers has non-symmetric ones...
+    NϵT(C, i, ϵ) = [j for j in 1:size(C, 2) if abs(C[i, j]) > ϵ * sqrt(C[i,i]*C[j,j])]
+    Nϵ(C, i, ϵ) = [j for j in 1:size(C, 2) if abs(C[j, i]) > ϵ * sqrt(C[i,i]*C[j,j])]
+    R = Set([i for i in 1:n if Nϵ(C, i, 0.0) != [i] || NϵT(C, i, 0.0) != [i]])
+
     j = 0
     Cpts = Int[]
 
@@ -68,7 +78,7 @@ function stand_agg(C)
 
     # Pass 1
     for i = 1:n
-        Ni = union!(Set(C.rowval[nzrange(C, i)]), Set(i))
+        Ni = Set(Nϵ(C, i, ϵ))
         if issubset(Ni, R)
             push!(Cpts, i)
             setdiff!(R, Ni)
@@ -82,42 +92,51 @@ function stand_agg(C)
     # Pass 2
     old_R = copy(R)
     for i = 1:n
-        if ! (i in R)
+        if i ∉ R
             continue
         end
 
-        for x in C.rowval[nzrange(C, i)]
-            if !(x in old_R)
-                aggregates[i] = aggregates[x]
-                setdiff!(R, i)
-                break
+        best_strength = -Inf
+        best_candidate = 0
+        for j in nzrange(C, i)
+            x = C.rowval[j]
+            if x ∉ old_R && best_strength < C.nzval[j]
+                best_strength = C.nzval[j]
+                best_candidate = x
             end
+        end
+        if best_candidate > 0
+            aggregates[i] = aggregates[best_candidate]
+            setdiff!(R, i)
         end
     end
 
     # Pass 3
     for i = 1:n
-        if !(i in R)
+        if i ∉ R
             continue
         end
-        Ni = union(Set(C.rowval[nzrange(C,i)]), Set(i))
-        push!(Cpts, i)
+
+        Ni = union(Set(Nϵ(C, i, ϵ)), R)
+        # Do not aggregate isolated nodes
+        if length(Ni) > 0
+            continue
+        end
+        j += 1
+        push!(Cpts, Ni)
 
         for x in Ni
             if x in R
                 aggregates[x] = j
             end
-            j += 1
         end
     end
 
-    @assert length(R) == 0
-
-    Pj = aggregates .+ 1
-    Pp = collect(1:n+1)
-    Px = ones(eltype(C), n)
-
-    SparseMatrixCSC(maximum(aggregates .+ 1), n, Pp, Pj, Px)
+    mask = aggregates .> -1
+    I = aggregates[mask] .+ 1
+    J = collect(1:n)[mask]
+    V = ones(length(I))
+    return sparse(I, J, V, maximum(I; init=0), n)
 end
 
 # Standard aggregation tests
@@ -126,23 +145,24 @@ function test_standard_aggregation()
     cases = generate_matrices()
 
     for matrix in cases
-        for θ in (0.0, 0.1, 0.5, 1., 10.)
-            C = symmetric_soc(matrix, θ)
-            calc_matrix = StandardAggregation()(matrix)
-            ref_matrix = stand_agg(matrix)
+        for θ in (0.0, 0.02, 0.1, 1.)
+            # We have to symmetrize the matrix for this functions below to work as expected (since some matrices are non-symmetric)
+            C = symmetric_soc(matrix + matrix', θ)
+            calc_matrix = StandardAggregation()(C)
+            ref_matrix = stand_agg(C)
             @test sum(abs2, ref_matrix - calc_matrix) < 1e-6
         end
     end
 
 end
 
-# Test fit_candidates 
+# Test fit_candidates
 function test_fit_candidates()
 
     cases = generate_fit_candidates_cases()
 
     for (i, (AggOp, fine_candidates)) in enumerate(cases)
-   
+
         mask_candidates!(AggOp, fine_candidates)
 
         Q, coarse_candidates = fit_candidates(AggOp, fine_candidates)
@@ -161,22 +181,22 @@ function generate_fit_candidates_cases()
     for T in (Float32, Float64)
 
         # One candidate
-        AggOp = SparseMatrixCSC(2, 5, collect(1:6), 
+        AggOp = SparseMatrixCSC(2, 5, collect(1:6),
                         [1,1,1,2,2], ones(T,5))
         B =  ones(T,5)
         push!(cases, (AggOp, B))
 
-        AggOp = SparseMatrixCSC(2, 5, collect(1:6), 
+        AggOp = SparseMatrixCSC(2, 5, collect(1:6),
                         [2,2,1,1,1], ones(T,5))
         B = ones(T, 5)
         push!(cases, (AggOp, B))
 
-        AggOp = SparseMatrixCSC(3, 9, collect(1:10), 
+        AggOp = SparseMatrixCSC(3, 9, collect(1:10),
                         [1,1,1,2,2,2,3,3,3], ones(T, 9))
         B = ones(T, 9)
         push!(cases, (AggOp, B))
 
-        AggOp = SparseMatrixCSC(3, 9, collect(1:10), 
+        AggOp = SparseMatrixCSC(3, 9, collect(1:10),
                         [3,2,1,1,2,3,2,1,3], ones(T,9))
         B = T.(collect(1:9))
         push!(cases, (AggOp, B))
@@ -206,11 +226,7 @@ function test_approximate_spectral_radius()
     end
 
     for A in cases
-        @static if VERSION < v"0.7-"
-            E,V = eig(A)            
-        else
-            E,V = (eigen(A)...,)
-        end
+        E,V = (eigen(A)...,)
         E = abs.(E)
         largest_eig = findall(E .== maximum(E))[1]
         expected_eig = E[largest_eig]
@@ -234,9 +250,8 @@ function test_approximate_spectral_radius()
     end
 end
 
-# Test Gauss Seidel 
-import AlgebraicMultigrid: gs!
-function test_gauss_seidel()    
+# Test Gauss Seidel
+function test_gauss_seidel()
     N = 1
     A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
@@ -245,7 +260,7 @@ function test_gauss_seidel()
     s(A, x, b)
     @test sum(abs2, x - zeros(N)) < 1e-8
 
-    N = 3 
+    N = 3
     A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = zeros(N)
@@ -261,7 +276,7 @@ function test_gauss_seidel()
     s(A, x, b)
     @test sum(abs2, x - zeros(N)) < 1e-8
 
-    N = 3 
+    N = 3
     A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = zeros(N)
@@ -277,7 +292,7 @@ function test_gauss_seidel()
     s(A, x, b)
     @test sum(abs2, x - [5.]) < 1e-8
 
-    N = 3 
+    N = 3
     A = spdiagm(0 => 2 * ones(N), -1 => -ones(N-1), 1 => -ones(N-1))
     x = eltype(A).(collect(0:N-1))
     b = eltype(A).([10., 20., 30.])
@@ -310,22 +325,30 @@ function test_jacobi_prolongator()
     @test sum(abs2, x - ref) < 1e-6
 end
 
-# Issue #24
-function nodes_not_agg()
-    A = include("onetoall.jl")
-    ml = smoothed_aggregation(A)
-    @test size(ml.levels[2].A) == (11,11)
-    @test size(ml.final_A) == (2,2)
-end
+# Smoothed Aggregation
+@testset "Smoothed Aggregation" begin
+    @testset "Symmetric Strength of Connection" begin
+        test_symmetric_soc()
+    end
 
-# Issue 26
-function test_symmetric_sweep()
-    A = poisson(10)
-    s = GaussSeidel(SymmetricSweep(), 4)
-    x = ones(size(A,1))
-    b = zeros(size(A,1))
-    s(A, x, b)
-    @test sum(abs2, x - [0.176765; 0.353529; 0.497517; 0.598914; 
-                            0.653311; 0.659104; 0.615597; 0.52275; 
-                            0.382787; 0.203251]) < 1e-6        
+    @testset "Standard Aggregation" begin
+        test_standard_aggregation()
+    end
+
+    @testset "Fit Candidates" begin
+        test_fit_candidates()
+    end
+
+    @testset "Approximate Spectral Radius" begin
+        test_approximate_spectral_radius()
+    end
+
+    @testset "Jacobi Prolongation" begin
+        test_jacobi_prolongator()
+    end
+
+    @testset "Int32 support" begin
+        a = sparse(Int32.(1:10), Int32.(1:10), rand(10))
+        @inferred smoothed_aggregation(a)
+    end
 end

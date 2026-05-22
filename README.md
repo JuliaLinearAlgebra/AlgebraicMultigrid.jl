@@ -76,13 +76,23 @@ strategy = KrylovJL_CG(precs = SmoothedAggregationPreconBuilder())
 sol = solve(prob, strategy, atol=1.0e-14)
 ```
 
+## Custom smoothers
+
+To use a custom smoother please dispatch
+```julia
+setup_smoother(config::Smoother, A::AbstractMatrix, symmetry)::S
+smooth!(x, smoother::S, b)
+```
+Where `S` denotes the smoothers cache which also must hold the matrix A.
+`smooth!` performs relaxation steps updating the current iterate x in-place:  x ← x + S⁻¹(b − A·x).
+
 ## Features and Roadmap
 
 This package currently supports:
 
 AMG Styles:
 * Ruge-Stuben Solver
-* Smoothed Aggregation (SA)
+* Smoothed Aggregation (SA) with handling of user-provided near null spaces
 
 Strength of Connection:
 * Classical Strength of Connection
@@ -91,14 +101,16 @@ Strength of Connection:
 Smoothers:
 * Gauss Seidel (Symmetric, Forward, Backward)
 * Damped Jacobi
+* SOR and SSOR
 
 Cycling:
 * V, W and F cycles
 
 In the future, this package will support:
 1. Other splitting methods (like CLJP)
-2. SOR smoother
-3. AMLI cycles
+2. AMLI cycles
+3. Root-Node AMG
+4. Shared-memory parallelization of relevant internal functions
 
 #### Acknowledgements
 This package has been heavily inspired by the [`PyAMG`](http://github.com/pyamg/pyamg) project.

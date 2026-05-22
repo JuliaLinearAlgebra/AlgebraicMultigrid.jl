@@ -74,7 +74,7 @@ struct SymmetricStrength{T} <: Strength
 end
 SymmetricStrength() = SymmetricStrength(0.)
 
-function (s::SymmetricStrength{T})(A, bsr_flag = false) where {T}
+function (s::SymmetricStrength{T})(A::AbstractMatrix{<: Real}, bsr_flag = false) where {T}
 
     θ = s.θ
 
@@ -119,4 +119,8 @@ function (s::SymmetricStrength{T})(A, bsr_flag = false) where {T}
     scale_cols_by_largest_entry!(S)    
 
     S, S
+end
+
+function (s::SymmetricStrength{T})(A::AbstractMatrix{<: Complex}, bsr_flag = false) where {T}
+    return error("Symmetric strength not implemented for complex matrices.")
 end

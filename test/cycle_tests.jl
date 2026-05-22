@@ -1,10 +1,9 @@
-    import AlgebraicMultigrid: ruge_stuben, smoothed_aggregation,
-    poisson, aspreconditioner
+import AlgebraicMultigrid: ruge_stuben, smoothed_aggregation,
+poisson, aspreconditioner
 
 import IterativeSolvers: cg
 
-function test_cycles()
-
+@testset "Cycles" begin
     A = poisson((50,50))
     b = A * ones(size(A,1))
 

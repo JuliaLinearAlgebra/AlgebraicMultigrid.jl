@@ -4,14 +4,13 @@ using IterativeSolvers, LinearSolve, AlgebraicMultigrid
 import AlgebraicMultigrid: Pinv, Classical
 using JLD2
 using FileIO
+using MatrixDepot
 
 using Random: seed!
 
 include("sa_tests.jl")
 include("cycle_tests.jl")
 include("nns_test.jl")
-
-@testset "AlgebraicMultigrid Tests" begin
 
 graph = include("test.jl")
 ref_S = include("ref_S_test.jl")
@@ -99,13 +98,8 @@ for i = 1:2
 end
 @test size(ml.final_A, 1) == 2
 @test nnz(ml.final_A) == 4
-@static if VERSION < v"0.7-"
-    @test round(AlgebraicMultigrid.operator_complexity(ml), 3) ≈ 1.142
-    @test round(AlgebraicMultigrid.grid_complexity(ml), 3) ≈ 1.190
-else
-    @test round(AlgebraicMultigrid.operator_complexity(ml), digits=3) ≈ 1.142
-    @test round(AlgebraicMultigrid.grid_complexity(ml), digits=3) ≈ 1.190
-end
+@test round(AlgebraicMultigrid.operator_complexity(ml), digits=3) ≈ 1.142
+@test round(AlgebraicMultigrid.grid_complexity(ml), digits=3) ≈ 1.190
 
 include("gmg.jl")
 
@@ -228,6 +222,21 @@ diff = x - [0.775725, -0.571202, -0.290989, -0.157001, -0.106981, 0.622652,
             0.0247913, 0.0238555, 0.0233681, 0.023096]
 @test sum(abs2, diff) < 1e-8
 
+# LinearSolve precs interface
+@testset "LinearSolvePrecs" begin
+    for sz in [ (10,10), (20,20), (50,50)]
+        A = poisson(sz)
+        u0= ones(size(A,1))
+        b=A*u0
+
+        prob = LinearProblem(A, b)
+        strategy = KrylovJL_CG(precs = RugeStubenPreconBuilder())
+        @test solve(prob, strategy, atol=1.0e-14) ≈ u0 rtol = 1.0e-8
+
+        strategy = KrylovJL_CG(precs = SmoothedAggregationPreconBuilder())
+        @test solve(prob, strategy, atol=1.0e-14) ≈ u0 rtol = 1.0e-8
+    end
+end
 
 end
 
@@ -248,105 +257,7 @@ end
 
 end
 
-# Smoothed Aggregation
-@testset "Smoothed Aggregation" begin
+include("test_regression.jl")
+include("test_smoothers.jl")
 
-@testset "Symmetric Strength of Connection" begin
-
-    test_symmetric_soc()
-end
-
-@testset "Standard Aggregation" begin
-
-    test_standard_aggregation()
-end
-
-@testset "Fit Candidates" begin
-    test_fit_candidates()
-end
-
-@testset "Approximate Spectral Radius" begin
-    test_approximate_spectral_radius()
-end
-end
-
-@testset "Gauss Seidel" begin
-    test_gauss_seidel()
-end
-
-@testset "Jacobi Prolongation" begin
-    test_jacobi_prolongator()
-end
-
-@testset "Cycles" begin
-    test_cycles()
-end
-
-@testset "Int32 support" begin
-    a = sparse(Int32.(1:10), Int32.(1:10), rand(10))
-    @inferred smoothed_aggregation(a)
-end
-
-# Issue #24
-nodes_not_agg()
-
-# Issue #26
-test_symmetric_sweep()
-
-# Issue #31
-for sz in [10, 5, 2]
-    a = poisson(sz)
-    ml = ruge_stuben(a)
-    @test isempty(ml.levels)
-    @test size(ml.final_A) == (sz,sz)
-    @test AlgebraicMultigrid.operator_complexity(ml) == 1
-    @test AlgebraicMultigrid.grid_complexity(ml) == 1
-
-    a = poisson(sz)
-    ml = smoothed_aggregation(a)
-    @test isempty(ml.levels)
-    @test size(ml.final_A) == (sz,sz)
-    @test AlgebraicMultigrid.operator_complexity(ml) == 1
-    @test AlgebraicMultigrid.grid_complexity(ml) == 1
-end
-
-# Issue #46
-for f in ((smoothed_aggregation, SmoothedAggregationAMG), 
-            (ruge_stuben, RugeStubenAMG))
-
-    a = load("bug.jld2")["G"]
-    ml = f[1](a)
-    p = aspreconditioner(ml)
-    b = zeros(size(a,1))
-    b[1] = 1
-    b[2] = -1
-    @test sum(abs2, a * solve(a, b, f[2]()) - b) < 1e-10
-    @test sum(abs2, a * cg(a, b, Pl = p, maxiter = 1000) - b) < 1e-10
-
-end
-
-end
-
-# Issue #56
-X = poisson(27_000)+24.0*I
-ml = ruge_stuben(X)
-b = rand(27_000)
-@test AlgebraicMultigrid._solve(ml, b, reltol = 1e-10) ≈ X \ b rtol = 1e-10
-
-# LinearSolve precs interface
-@testset "LinearSolvePrecs" begin
-
-for sz in [ (10,10), (20,20), (50,50)]
-    A = poisson(sz)
-    u0= ones(size(A,1))
-    b=A*u0
-
-    prob = LinearProblem(A, b)
-    strategy = KrylovJL_CG(precs = RugeStubenPreconBuilder())
-    @test solve(prob, strategy, atol=1.0e-14) ≈ u0 rtol = 1.0e-8
-
-    strategy = KrylovJL_CG(precs = SmoothedAggregationPreconBuilder())
-    @test solve(prob, strategy, atol=1.0e-14) ≈ u0 rtol = 1.0e-8
-end
-
-end
+include("test_complex.jl")

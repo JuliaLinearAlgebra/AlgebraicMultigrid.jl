@@ -1,7 +1,12 @@
+function ruge_stuben(_A::Union{Symmetric, Hermitian}, args...; kwargs...)
+    A, symmetry = get_symmetry_and_data(_A)
+    return ruge_stuben(A, args...; symmetry, kwargs...)
+end
 
-function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}}, 
+function ruge_stuben(A::TA,
                 ::Type{Val{bs}}=Val{1};
                 strength = Classical(0.25),
+                symmetry = HermitianSymmetry(),
                 CF = RS(),
                 presmoother = GaussSeidel(),
                 postsmoother = GaussSeidel(),
@@ -12,20 +17,12 @@ function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}},
     # fails if near null space `B` is provided
     haskey(kwargs, :B) && kwargs[:B] !== nothing && error("near null space `B` is only supported for smoothed aggregation AMG, not Ruge-Stüben AMG.")
 
-    if _A isa Symmetric && Ti <: Real || _A isa Hermitian
-        A = _A.data
-        symmetric = true
-        levels = Vector{Level{TA, Adjoint{Ti, TA}, TA}}()
-    else
-        symmetric = false
-        A = _A
-        levels = Vector{Level{TA, Adjoint{Ti, TA}, TA}}()
-    end
+    levels = Vector{Level{TA, Adjoint{Ti, TA}, TA}}()
     w = MultiLevelWorkspace(Val{bs}, eltype(A))
     residual!(w, size(A, 1))
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
-        @timeit_debug "extend_hierarchy!" A = extend_hierarchy_rs!(levels, strength, CF, A, symmetric)
+        @timeit_debug "extend_hierarchy!" A = extend_hierarchy_rs!(levels, strength, CF, A, presmoother, postsmoother, symmetry)
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
         residual!(w, size(A, 1))
@@ -35,8 +32,8 @@ function ruge_stuben(_A::Union{TA, Symmetric{Ti, TA}, Hermitian{Ti, TA}},
     return MultiLevel(levels, A, cs, presmoother, postsmoother, w)
 end
 
-function extend_hierarchy_rs!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, symmetric) where {Ti,Tv}
-    if symmetric
+function extend_hierarchy_rs!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother, symmetry) where {Ti,Tv}
+    if symmetry isa HermitianSymmetry
         At = A
     else
         At = adjoint(A)
@@ -45,7 +42,13 @@ function extend_hierarchy_rs!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, s
     @timeit_debug "splitting" splitting = CF(S)
     @timeit_debug "interpolation" P, R = direct_interpolation(At, T, splitting)
     @timeit_debug "RAP" RAP = R * A * P
-    push!(levels, Level(A, P, R))
+
+    @timeit_debug "smoother setup" begin
+        pre = setup_smoother(presmoother, A, symmetry)
+        post = setup_smoother(postsmoother, A, symmetry)
+        push!(levels, Level(A, P, R, pre, post))
+    end
+
     return RAP
 end
 
