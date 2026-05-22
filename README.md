@@ -86,6 +86,13 @@ smooth!(x, smoother::S, b)
 Where `S` denotes the smoothers cache which also must hold the matrix A.
 `smooth!` performs relaxation steps updating the current iterate x in-place:  x ← x + S⁻¹(b − A·x).
 
+##  Coarse solver
+
+Users can choose from different coarse solvers.
+* AlgebraicMultigrid.LinearSolveWrapper(alg) where alg is any LinearSolve.jl solver (https://docs.sciml.ai/LinearSolve/stable/basics/algorithm_selection/#Algorithm-Categories)
+* AlgebraicMultigrid.QRSolver
+* AlgebraicMultigrid.Pinv
+
 ## Features and Roadmap
 
 This package currently supports:
