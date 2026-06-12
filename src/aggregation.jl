@@ -94,10 +94,12 @@ function smoothed_aggregation(A::TA,
     end
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
+        prev_n_levels = length(levels)
         @timeit_debug "extend_hierarchy!" A, B, bsr_flag = extend_hierarchy_sa!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
                                 keep, A, B, presmoother, postsmoother, symmetry, bsr_flag, verbose)
-        size(A, 1) == 0 && break
+        # Break if no coarsening happened (all nodes isolated) or degenerate coarse matrix
+        length(levels) == prev_n_levels && break
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
         residual!(w, size(A, 1))
@@ -128,8 +130,11 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
     # Aggregation operator
     @timeit_debug "aggregation" AggOp = aggregate(S)
 
+    # Cannot coarsen further if no aggregates were formed (e.g. all nodes isolated)
+    size(AggOp, 1) == 0 && return A, B, bsr_flag
+
     # Improve candidates
-    b = zeros(size(A,1),size(B,2))
+    b = zeros(eltype(A), size(A,1),size(B,2))
     @timeit_debug "improve candidates" improve_candidates(A, B, b)
     @timeit_debug "fit candidates" T, B = fit_candidates(AggOp, B)
 
@@ -160,11 +165,7 @@ function fit_candidates(AggOp, B::AbstractVector; tol=1e-10)
     n_col = n_coarse
 
     R = zeros(eltype(B), n_coarse)
-    Qx = zeros(eltype(B), nnz(A))
-    # copy!(Qx, B)
-    for i = 1:size(Qx, 1)
-        Qx[i] = B[i]
-    end
+    Qx = copy(B)
     # copy!(A.nzval, B)
     for i = 1:n_col
         for j in nzrange(A,i)
@@ -172,7 +173,6 @@ function fit_candidates(AggOp, B::AbstractVector; tol=1e-10)
             A.nzval[j] = B[row]
         end
     end
-    k = 1
     for i = 1:n_col
         norm_i = norm_col(A, Qx, i)
         threshold_i = tol * norm_i
@@ -233,11 +233,7 @@ end
 function norm_col(A, Qx, i)
     s = zero(eltype(A))
     for j in nzrange(A, i)
-        if A.rowval[j] > length(Qx)
-            val = 1
-        else
-            val = Qx[A.rowval[j]]
-        end
+        val = Qx[A.rowval[j]]
         # val = A.nzval[A.rowval[j]]
         s += val*val
     end

@@ -64,7 +64,7 @@ end
 function stand_agg(C, ϵ=0)
     n = size(C, 1)
 
-    # FIXME manouvering around the implementation begin CSC but pretending to be CSR and
+    # FIXME maneuvering around the implementation begin CSC but pretending to be CSR and
     #       the fact that the implementation can only handle symmetric matrices while
     #       this test covers has non-symmetric ones...
     NϵT(C, i, ϵ) = [j for j in 1:size(C, 2) if abs(C[i, j]) > ϵ * sqrt(C[i,i]*C[j,j])]
@@ -117,19 +117,14 @@ function stand_agg(C, ϵ=0)
             continue
         end
 
-        Ni = union(Set(Nϵ(C, i, ϵ)), R)
-        # Do not aggregate isolated nodes
-        if length(Ni) > 0
-            continue
+        Ni = intersect(Set(Nϵ(C, i, ϵ)), R)
+        push!(Ni, i)  # always include the seed node itself
+        push!(Cpts, i)
+        setdiff!(R, Ni)
+        for x in Ni
+            aggregates[x] = j
         end
         j += 1
-        push!(Cpts, Ni)
-
-        for x in Ni
-            if x in R
-                aggregates[x] = j
-            end
-        end
     end
 
     mask = aggregates .> -1
@@ -137,6 +132,55 @@ function stand_agg(C, ϵ=0)
     J = collect(1:n)[mask]
     V = ones(length(I))
     return sparse(I, J, V, maximum(I; init=0), n)
+end
+
+
+
+# Corner case tests for StandardAggregation
+function test_standard_aggregation_corner_cases()
+
+    # Off-by-one in aggregate_size: a 4-node chain whose strength matrix has no
+    # diagonal entries should form 2 aggregates of size 2.
+    S_chain = sparse([1,2,2,3,3,4],[2,1,3,2,4,3], ones(Float64,6), 4, 4)
+    AggOp_chain = StandardAggregation()(S_chain)
+    @test size(AggOp_chain, 1) == 2                          # exactly 2 aggregates
+    @test all(vec(sum(AggOp_chain, dims=1)) .== 1)           # every node in exactly one
+
+    # Disconnected graph: two independent 3-node chains.
+    # Both components must be fully aggregated without mixing.
+    rows_d = [1,2,2,3,4,5,5,6]; cols_d = [2,1,3,2,5,4,6,5]
+    S_disc = sparse(rows_d, cols_d, ones(Float64,8), 6, 6) + spdiagm(0 => ones(6))
+    ref_disc  = stand_agg(S_disc)
+    calc_disc = StandardAggregation()(S_disc)
+    @test sum(abs2, calc_disc - ref_disc) < 1e-6
+
+    # All nodes isolated (diagonal-only strength matrix) → nothing is aggregated.
+    S_iso = spdiagm(0 => ones(Float64, 5))
+    @test sum(abs2, StandardAggregation()(S_iso) - stand_agg(S_iso)) < 1e-6
+    @test nnz(StandardAggregation()(S_iso)) == 0
+
+    # Empty 0×0 strength matrix must not crash (guards minimum() on empty array).
+    S_empty = spzeros(Float64, 0, 0)
+    AggOp_empty = StandardAggregation()(S_empty)
+    @test size(AggOp_empty) == (0, 0)
+
+    # smoothed_aggregation on a large diagonal matrix (all nodes isolated at every level)
+    # must return a valid 1-level hierarchy rather than crashing at solve time.
+    A_diag = spdiagm(0 => 2.0 * ones(Float64, 20))
+    ml_diag = smoothed_aggregation(A_diag)
+    @test length(ml_diag) == 1
+    @test size(ml_diag.final_A) == (20, 20)
+
+    # Intermediate isolated node: a 5-node chain where node 3 has a large diagonal
+    # that severs the connection between aggregates {1,2} and {4,5}.
+    # Verifies AggOp has a zero column for node 3 and the full pipeline solves.
+    A_iso = spdiagm(-1 => fill(-0.5, 4), 0 => [1.0,1.0,100.0,1.0,1.0],
+                                          1 => fill(-0.5, 4))
+    S_iso5, _ = SymmetricStrength(0.25)(A_iso)
+    AggOp_iso5 = StandardAggregation()(S_iso5)
+    @test size(AggOp_iso5, 1) == 2              # exactly 2 aggregates
+    @test nnz(AggOp_iso5[:, 3]) == 0           # node 3 isolated (zero column)
+
 end
 
 # Standard aggregation tests
@@ -198,6 +242,24 @@ function generate_fit_candidates_cases()
 
         AggOp = SparseMatrixCSC(3, 9, collect(1:10),
                         [3,2,1,1,2,3,2,1,3], ones(T,9))
+        B = T.(collect(1:9))
+        push!(cases, (AggOp, B))
+
+        # Isolated intermediate node: fine node 3 has no aggregate (zero column).
+        # AggOp is 2×5, colptr has zero-width at column 3.
+        # Regression test for Qx allocation bug: for non-unit B the norm of
+        # aggregate 2 (nodes {4,5}) was computed incorrectly when fine-node
+        # indices exceeded nnz(AggOp).
+        AggOp = SparseMatrixCSC(2, 5, Int[1,2,3,3,4,5],
+                        Int[1,1,2,2], ones(T,4))
+        B = T.([1, 1, 5, 2, 3])
+        push!(cases, (AggOp, B))
+
+        # Two isolated intermediate nodes: fine nodes 3 and 7 have no aggregate.
+        # Aggregates: agg 1 = {nodes 1,2}, agg 2 = {nodes 4,5,6}, agg 3 = {nodes 8,9}.
+        # AggOp is 3×9 with zero-width columns at positions 3 and 7.
+        AggOp = SparseMatrixCSC(3, 9, Int[1,2,3,3,4,5,6,6,7,8],
+                        Int[1,1,2,2,2,3,3], ones(T,7))
         B = T.(collect(1:9))
         push!(cases, (AggOp, B))
     end
@@ -325,6 +387,14 @@ function test_jacobi_prolongator()
     @test sum(abs2, x - ref) < 1e-6
 end
 
+# Issue #24
+function nodes_not_agg()
+    A = include("onetoall.jl")
+    ml = smoothed_aggregation(A)
+    @test size(ml.levels[2].A) == (11,11)
+    @test size(ml.final_A) == (2,2)
+end
+
 # Smoothed Aggregation
 @testset "Smoothed Aggregation" begin
     @testset "Symmetric Strength of Connection" begin
@@ -333,6 +403,10 @@ end
 
     @testset "Standard Aggregation" begin
         test_standard_aggregation()
+    end
+
+    @testset "Standard Aggregation Corner Cases" begin
+        test_standard_aggregation_corner_cases()
     end
 
     @testset "Fit Candidates" begin
@@ -350,5 +424,10 @@ end
     @testset "Int32 support" begin
         a = sparse(Int32.(1:10), Int32.(1:10), rand(10))
         @inferred smoothed_aggregation(a)
+    end
+
+    # Issue #24
+    @testset "Regression Test #24" begin
+        nodes_not_agg()
     end
 end

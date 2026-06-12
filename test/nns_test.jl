@@ -73,6 +73,24 @@ end
         1e-20 .* hcat(ones(4), collect(0:3))
     ))
 
+    # 4. Isolated intermediate node: node 3 has no aggregate assignment.
+    # AggOp is (n_fine × n_agg): rows = fine nodes, cols = aggregates.
+    # The masking loop below zeros fine[3,:] before fit_candidates is called.
+    push!(cases, (
+        sparse([1, 2, 4, 5], [1, 1, 2, 2], ones(4), 5, 2),
+        hcat(ones(5), Float64[1, 2, 3, 4, 5])
+    ))
+    # Same with 3 near-null vectors so length(rows) < m for singleton aggregates
+    push!(cases, (
+        sparse([1, 2, 4, 5], [1, 1, 2, 2], ones(4), 5, 2),
+        hcat(ones(5), Float64[1,2,3,4,5], Float64[5,4,3,2,1])
+    ))
+    # Isolated nodes at both ends: nodes 1 and 7 isolated, 2 aggregates
+    push!(cases, (
+        sparse([2, 3, 4, 5, 6], [1, 1, 2, 2, 2], ones(5), 7, 2),
+        hcat(ones(7), Float64[1,2,3,4,5,6,7])
+    ))
+
     # Run tests
     for (AggOp, fine) in cases
         # mask dofs not in aggregation
