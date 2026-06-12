@@ -2,6 +2,7 @@
     A = poisson((5, 5))
     Ac = A .* 1/√2 + A .* im/√2
 
+    Random.seed!(1337)
     u = rand(Complex{Float64}, 5*5)
     b = Ac*u
 
