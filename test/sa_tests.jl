@@ -387,34 +387,6 @@ function test_jacobi_prolongator()
     @test sum(abs2, x - ref) < 1e-6
 end
 
-# Smoothed Aggregation
-@testset "Smoothed Aggregation" begin
-    @testset "Symmetric Strength of Connection" begin
-        test_symmetric_soc()
-    end
-
-    @testset "Standard Aggregation" begin
-        test_standard_aggregation()
-    end
-
-    @testset "Fit Candidates" begin
-        test_fit_candidates()
-    end
-
-    @testset "Approximate Spectral Radius" begin
-        test_approximate_spectral_radius()
-    end
-
-    @testset "Jacobi Prolongation" begin
-        test_jacobi_prolongator()
-    end
-
-    @testset "Int32 support" begin
-        a = sparse(Int32.(1:10), Int32.(1:10), rand(10))
-        @inferred smoothed_aggregation(a)
-    end
-end
-
 # Issue #24
 function nodes_not_agg()
     A = include("onetoall.jl")
@@ -441,11 +413,21 @@ end
         test_fit_candidates()
     end
 
+    @testset "Approximate Spectral Radius" begin
+        test_approximate_spectral_radius()
+    end
+
+    @testset "Jacobi Prolongation" begin
+        test_jacobi_prolongator()
+    end
+
     @testset "Int32 support" begin
         a = sparse(Int32.(1:10), Int32.(1:10), rand(10))
         @inferred smoothed_aggregation(a)
     end
 
     # Issue #24
-    nodes_not_agg()
+    @testset "Regression Test #24" begin
+        nodes_not_agg()
+    end
 end
