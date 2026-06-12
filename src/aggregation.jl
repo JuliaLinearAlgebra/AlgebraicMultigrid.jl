@@ -78,7 +78,7 @@ function smoothed_aggregation(A::TA,
                         diagonal_dominance = false,
                         keep = false,
                         verbose = false,
-                        coarse_solver = Pinv, kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
+                        coarse_solver = _default_coarse_solver(A), kwargs...) where {T,V,bs,TA<:SparseMatrixCSC{T,V}}
 
     @timeit_debug "prologue" begin
 
@@ -94,12 +94,10 @@ function smoothed_aggregation(A::TA,
     end
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
-        prev_n_levels = length(levels)
-        @timeit_debug "extend_hierarchy!" A, B, bsr_flag = extend_hierarchy_sa!(levels, strength, aggregate, smooth,
+        @timeit_debug "extend_hierarchy!" A, B, bsr_flag, stop_coarsening = extend_hierarchy_sa!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
                                 keep, A, B, presmoother, postsmoother, symmetry, bsr_flag, verbose)
-        # Break if no coarsening happened (all nodes isolated) or degenerate coarse matrix
-        length(levels) == prev_n_levels && break
+        stop_coarsening && break
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
         residual!(w, size(A, 1))
@@ -131,7 +129,7 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
     @timeit_debug "aggregation" AggOp = aggregate(S)
 
     # Cannot coarsen further if no aggregates were formed (e.g. all nodes isolated)
-    size(AggOp, 1) == 0 && return A, B, bsr_flag
+    size(AggOp, 1) == 0 && return A, B, bsr_flag, true
 
     # Improve candidates
     b = zeros(eltype(A), size(A,1),size(B,2))
@@ -140,6 +138,7 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
 
     @timeit_debug "restriction setup" begin
         P = smooth(A, T, S, B)
+        size(P, 2) == 0 && return A, B, true, true
         R = construct_R(symmetry, P)
     end
 
@@ -154,7 +153,7 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
     bsr_flag = true
 
     # RAP is the coarse matrix and B is the coarse null space
-    RAP, B, bsr_flag
+    RAP, B, bsr_flag, false
 end
 construct_R(::HermitianSymmetry, P) = P'
 construct_R(::NoSymmetry, P) = P'

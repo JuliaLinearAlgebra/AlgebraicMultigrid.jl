@@ -140,12 +140,12 @@ x = AlgebraicMultigrid._solve(ml, A * ones(100))
 
 end
 
-@testset "Preconditioning" begin
+@testset "Preconditioning non-SPD problem" begin
 A = include("thing.jl")
 n = size(A, 1)
 smoother = GaussSeidel(ForwardSweep())
 ml = ruge_stuben(A, presmoother = smoother,
-                    postsmoother = smoother)
+                    postsmoother = smoother, coarse_solver = AMG.Pinv)
 p = aspreconditioner(ml)
 b = zeros(n)
 b[1] = 1
@@ -170,7 +170,8 @@ diff = x - [  1.88664780e-16,   2.34982727e-16,   2.33917697e-16,
 @test sum(abs2, diff) < 1e-8
 x = solve(A, b, RugeStubenAMG(); presmoother = smoother, 
                                 postsmoother = smoother,
-                                maxiter = 1, abstol = 1e-12)
+                                maxiter = 1, abstol = 1e-12,
+                                coarse_solver = AMG.Pinv)
 diff = x - [ 0.76347046, -0.5498286 , -0.2705487 , -0.15047352, -0.10248021,
         0.60292674, -0.11497073, -0.08460548, -0.06931461,  0.38230708,
        -0.055664  , -0.04854558, -0.04577031,  0.09964325,  0.01825624,
@@ -197,7 +198,7 @@ diff = x - [ 0.82365077, -0.537589  , -0.30632349, -0.19370186, -0.14773294,
 
 # Symmetric GaussSeidel Smoothing
 
-ml = ruge_stuben(A)
+ml = ruge_stuben(A, coarse_solver = AMG.Pinv)
 p = aspreconditioner(ml)
 
 x = cg(A, b, Pl = p, maxiter = 100_000, reltol = 1e-6)

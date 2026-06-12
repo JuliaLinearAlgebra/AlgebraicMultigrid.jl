@@ -28,6 +28,8 @@ include("smoother.jl")
 export GaussSeidel, SymmetricSweep, ForwardSweep, BackwardSweep,
         JacobiProlongation, SOR
 
+include("coarse_solver.jl")
+
 include("multilevel.jl")
 export RugeStubenAMG, SmoothedAggregationAMG
 
