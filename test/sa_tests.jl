@@ -140,10 +140,7 @@ end
 function test_standard_aggregation_corner_cases()
 
     # Off-by-one in aggregate_size: a 4-node chain whose strength matrix has no
-    # diagonal entries should form 2 aggregates of size 2 when min_aggregate_size=2.
-    # The buggy code (aggregate_size starts at 0) rejects the first candidate because
-    # it only counts the 1 neighbour and misses the seed, collapsing everything into
-    # one aggregate instead.
+    # diagonal entries should form 2 aggregates of size 2.
     S_chain = sparse([1,2,2,3,3,4],[2,1,3,2,4,3], ones(Float64,6), 4, 4)
     AggOp_chain = StandardAggregation()(S_chain)
     @test size(AggOp_chain, 1) == 2                          # exactly 2 aggregates
