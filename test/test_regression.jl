@@ -59,8 +59,12 @@ end
 @testset "Regression for issue #56" begin
     # Issue #56
     X = poisson(27_000)+24.0*I
-    ml = ruge_stuben(X)
     b = rand(27_000)
+
+    ml = ruge_stuben(X)
+    @test AlgebraicMultigrid._solve(ml, b, reltol = 1e-10) ≈ X \ b rtol = 1e-10
+
+    ml = smoothed_aggregation(X, strength = SymmetricStrength(0.05))
     @test AlgebraicMultigrid._solve(ml, b, reltol = 1e-10) ≈ X \ b rtol = 1e-10
 end
 

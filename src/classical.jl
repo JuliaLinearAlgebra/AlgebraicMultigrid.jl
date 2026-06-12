@@ -12,7 +12,7 @@ function ruge_stuben(A::TA,
                 postsmoother = GaussSeidel(),
                 max_levels = 10,
                 max_coarse = 10,
-                coarse_solver = Pinv, kwargs...) where {Ti,Tv,bs,TA<:SparseMatrixCSC{Ti,Tv}}
+                coarse_solver = _default_coarse_solver(A), kwargs...) where {Ti,Tv,bs,TA<:SparseMatrixCSC{Ti,Tv}}
 
     # fails if near null space `B` is provided
     haskey(kwargs, :B) && kwargs[:B] !== nothing && error("near null space `B` is only supported for smoothed aggregation AMG, not Ruge-Stüben AMG.")
@@ -22,7 +22,8 @@ function ruge_stuben(A::TA,
     residual!(w, size(A, 1))
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
-        @timeit_debug "extend_hierarchy!" A = extend_hierarchy_rs!(levels, strength, CF, A, presmoother, postsmoother, symmetry)
+        @timeit_debug "extend_hierarchy!" A, stop_coarsening = extend_hierarchy_rs!(levels, strength, CF, A, presmoother, postsmoother, symmetry)
+        stop_coarsening && break
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
         residual!(w, size(A, 1))
@@ -41,6 +42,7 @@ function extend_hierarchy_rs!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, p
     @timeit_debug "strength" S, T = strength(At)
     @timeit_debug "splitting" splitting = CF(S)
     @timeit_debug "interpolation" P, R = direct_interpolation(At, T, splitting)
+    size(P, 2) == 0 && return A, true
     @timeit_debug "RAP" RAP = R * A * P
 
     @timeit_debug "smoother setup" begin
@@ -49,7 +51,7 @@ function extend_hierarchy_rs!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, p
         push!(levels, Level(A, P, R, pre, post))
     end
 
-    return RAP
+    return RAP, false
 end
 
 function direct_interpolation(At, T, splitting)
