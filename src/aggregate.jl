@@ -114,7 +114,7 @@ function (::StandardAggregation)(S::SparseMatrixCSC{T,R}) where {T,R}
 
     M, N = (n, next_aggregate)
 
-    # Pass 3: Aggregation of leftovers
+    # Aggregation of leftovers
     if isempty(x) || minimum(x) == -1
         mask = x .!= -1
         I = collect(R, 1:n)[mask]
