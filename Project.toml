@@ -1,6 +1,6 @@
 name = "AlgebraicMultigrid"
 uuid = "2169fc97-5a83-5252-b627-83903c6c433c"
-version = "2.0.0"
+version = "2.0.1"
 
 [deps]
 CommonSolve = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
@@ -14,7 +14,7 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 [compat]
 CommonSolve = "0.2"
 JLD2 = "0.6.3"
-LinearSolve = "2, 3"
+LinearSolve = "2, 3, 4"
 MatrixDepot = "1.0.14"
 Reexport = "1"
 TimerOutputs = "0.5.29"
