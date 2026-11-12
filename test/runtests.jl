@@ -260,5 +260,6 @@ end
 
 include("test_regression.jl")
 include("test_smoothers.jl")
+include("test_nonsymmetric.jl")
 
 include("test_complex.jl")

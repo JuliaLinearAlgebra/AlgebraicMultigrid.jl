@@ -6,7 +6,7 @@ end
 function ruge_stuben(A::TA,
                 ::Type{Val{bs}}=Val{1};
                 strength = Classical(0.25),
-                symmetry = HermitianSymmetry(),
+                symmetry = default_symmetry(A),
                 CF = RS(),
                 presmoother = GaussSeidel(),
                 postsmoother = GaussSeidel(),

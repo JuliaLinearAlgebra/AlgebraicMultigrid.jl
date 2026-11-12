@@ -66,7 +66,7 @@ end
 function smoothed_aggregation(A::TA,
                         ::Type{Val{bs}}=Val{1};
                         B = nothing,
-                        symmetry = HermitianSymmetry(),
+                        symmetry = default_symmetry(A),
                         strength = SymmetricStrength(),
                         aggregate = StandardAggregation(),
                         smooth = JacobiProlongation(4.0/3.0),
@@ -133,7 +133,7 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
 
     # Improve candidates
     b = zeros(eltype(A), size(A,1),size(B,2))
-    @timeit_debug "improve candidates" improve_candidates(A, B, b)
+    @timeit_debug "improve candidates" improve_candidates(A, B, b, symmetry)
     @timeit_debug "fit candidates" T, B = fit_candidates(AggOp, B)
 
     @timeit_debug "restriction setup" begin

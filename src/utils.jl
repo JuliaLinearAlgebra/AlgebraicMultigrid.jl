@@ -4,6 +4,16 @@ end
 struct HermitianSymmetry
 end
 
+"""
+    default_symmetry(A)
+
+Symmetry hint used when the caller does not pass one: `HermitianSymmetry()` if `A` is
+Hermitian (symmetric, for real `A`), `NoSymmetry()` otherwise. The fast smoother and
+hierarchy paths for `HermitianSymmetry` read the columns of the CSC matrix as its rows,
+which is only valid when `A` equals its adjoint.
+"""
+default_symmetry(A) = ishermitian(A) ? HermitianSymmetry() : NoSymmetry()
+
 function get_symmetry_and_data(_A::AbstractMatrix{T}) where {T}
     if _A isa Symmetric && T <: Real
         A = _A.data
