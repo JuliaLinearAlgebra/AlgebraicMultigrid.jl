@@ -1,14 +1,24 @@
 
 abstract type CoarseSolver end
 
+# Relative tolerance below which the coarse solvers treat singular values (`Pinv`) or
+# diagonal entries of R (`QRSolver`) as zero. A singular problem, e.g. one with a pure
+# Neumann boundary, produces a coarsest matrix that is only numerically singular
+# (σmin/σmax ≈ 1e-16). With the factorizations' default tolerances, rounding decides
+# whether that is recognized; when it is not, the coarse correction divides by ~1e-17
+# and the cycle stalls.
+coarse_rtol(::Type{T}) where {T} = sqrt(eps(real(float(T))))
+
 """
     Pinv{T} <: CoarseSolver
 
-Moore-Penrose pseudo inverse coarse solver. Calls `pinv`
+Moore-Penrose pseudo inverse coarse solver. Calls `pinv`, treating singular values
+below `√eps · σmax` as zero so that numerically singular coarse matrices are handled
+consistently.
 """
 struct Pinv{T} <: CoarseSolver
     pinvA::Matrix{T}
-    Pinv{T}(A) where T = new{T}(pinv(Matrix(A)))
+    Pinv{T}(A) where T = new{T}(pinv(Matrix(A); rtol = coarse_rtol(T)))
 end
 Pinv(A) = Pinv{eltype(A)}(A)
 Base.show(io::IO, p::Pinv) = print(io, "Pinv")
@@ -61,14 +71,23 @@ end
 """
     QRSolver{F} <: CoarseSolver
 
-Coarse solver using Julia's built-in factorizations via `qr()`.
+Coarse solver using Julia's built-in factorizations via `qr()`. For sparse matrices
+(SuiteSparse QR), columns whose norm drops below `√eps` times the largest column norm
+during the factorization are treated as zero, so that numerically singular coarse
+matrices are handled consistently.
 """
 struct QRSolver{F} <: CoarseSolver
     factorization::F
     function QRSolver(A)
-        fact = qr(A)
+        fact = coarse_qr(A)
         new{typeof(fact)}(fact)
     end
+end
+
+coarse_qr(A) = qr(A)
+function coarse_qr(A::SparseMatrixCSC{T}) where {T}
+    maxcolnorm = maximum(j -> norm(view(nonzeros(A), nzrange(A, j))), 1:size(A, 2); init = zero(real(T)))
+    return qr(A; tol = coarse_rtol(T) * maxcolnorm)
 end
 Base.show(io::IO, p::QRSolver) = print(io, "QRSolver")
 
