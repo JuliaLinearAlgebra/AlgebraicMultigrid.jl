@@ -18,9 +18,9 @@ const MATRIXDEPOT_CASES = [
     ("tridiag(500, -1, 3, -1)", sparse(MatrixDepot.tridiag(Float64, 500, -1, 3, -1)), ()),
     # Non-symmetric
     ("tridiag(500, -2, 4, -1)", sparse(MatrixDepot.tridiag(Float64, 500, -2, 4, -1)), ()),
-    # Smoothed aggregation diverges on strongly non-symmetric matrices: its hierarchy
-    # (R = Pᵀ, Jacobi-smoothed prolongation) is built for the symmetric case.
-    ("tridiag(500, -4, 5, -1)", sparse(MatrixDepot.tridiag(Float64, 500, -4, 5, -1)), (:smoothed_aggregation,)),
+    # Strongly non-symmetric: smoothed aggregation needs its Petrov-Galerkin restriction here.
+    ("tridiag(500, -4, 5, -1)", sparse(MatrixDepot.tridiag(Float64, 500, -4, 5, -1)), ()),
+    ("tridiag(500, -9, 10, -1)", sparse(MatrixDepot.tridiag(Float64, 500, -9, 10, -1)), ()),
     # Singular (constant null space); the right-hand side is kept in the range of A.
     ("neumann(32)",            MatrixDepot.neumann(Float64, 32),                  ()),
 ]
