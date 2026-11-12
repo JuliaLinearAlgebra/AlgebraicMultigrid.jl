@@ -31,7 +31,7 @@ Where the smoother stores both, A and an object to apply the smoother action.
 smooth!
 
 # Inplace version of smooth!
-function (config::Smoother)(A, x, b, symmetry = HermitianSymmetry())
+function (config::Smoother)(A, x, b, symmetry = default_symmetry(A))
     s = setup_smoother(config, A, symmetry)
     smooth!(x, s, b)
     return nothing
