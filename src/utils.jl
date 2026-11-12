@@ -55,13 +55,26 @@ function approximate_spectral_radius(A, tol = 0.01,
         # m, max_index = findmax(abs.(ev))
         m, max_index = findmaxabs(ev)
         error = H[nvecs, nvecs-1] * evect[end, max_index]
-        @views mul!(v0, X, evect[:, max_index])
+        @views restart_vector!(v0, X * evect[:, max_index])
         if (abs(error) / abs(ev[max_index]) < tol) || flag
             # v0 = X * evect[:, max_index]
             break
         end
     end
     ρ = abs(ev[max_index])
+end
+
+# Restart vector for the next Arnoldi pass from the dominant Ritz vector `y`.
+# For a real, non-symmetric `A` the Ritz vector can be complex; a real restart
+# vector is then taken from its real part (or its imaginary part, if the real part
+# vanishes). Both lie in the invariant subspace of the complex-conjugate pair.
+restart_vector!(v0::AbstractVector{<:Complex}, y) = copyto!(v0, y)
+function restart_vector!(v0::AbstractVector{<:Real}, y)
+    v0 .= real.(y)
+    if norm(v0) <= sqrt(eps(real(eltype(v0)))) * norm(y)
+        v0 .= imag.(y)
+    end
+    return v0
 end
 
 function findmaxabs(arr)

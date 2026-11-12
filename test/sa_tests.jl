@@ -310,6 +310,21 @@ function test_approximate_spectral_radius()
 
         @test isapprox(approximate_spectral_radius(A), expected_eig)
     end
+
+    # Real non-symmetric matrices whose dominant eigenvalues (or Ritz values) are
+    # complex; these used to throw an InexactError.
+    rotation = sparse([0.0 -2.0 0.0
+                       2.0  0.0 0.0
+                       0.0  0.0 1.0])            # dominant pair ±2im
+    @test approximate_spectral_radius(rotation) ≈ 2.0
+
+    n = 300
+    convection = spdiagm(-1 => fill(-0.5, n - 1), 0 => fill(1.0, n), 1 => fill(-0.25, n - 1))
+    random_sparse = sprandn(200, 200, 0.05) + I
+    for A in (convection, random_sparse)
+        expected_eig = maximum(abs, eigvals(Matrix(A)))
+        @test isapprox(approximate_spectral_radius(A), expected_eig; rtol = 0.05)
+    end
 end
 
 # Test Gauss Seidel
