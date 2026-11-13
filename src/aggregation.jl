@@ -137,9 +137,9 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
     @timeit_debug "fit candidates" T, B = fit_candidates(AggOp, B)
 
     @timeit_debug "restriction setup" begin
-        P = smooth(A, T, S, B)
+        P = smooth_prolongator(smooth, A, T, S, B, symmetry)
         size(P, 2) == 0 && return A, B, true, true
-        R = construct_R(symmetry, P)
+        R = construct_R(symmetry, smooth, A, T, S, B, P)
     end
 
     @timeit_debug "RAP" RAP = R * A * P
@@ -155,8 +155,19 @@ function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
     # RAP is the coarse matrix and B is the coarse null space
     RAP, B, bsr_flag, false
 end
-construct_R(::HermitianSymmetry, P) = P'
-construct_R(::NoSymmetry, P) = P'
+# For a non-symmetric A, the Galerkin choice R = Pᵀ lets the coarse operators drift away
+# from diagonal dominance level by level, until Gauss-Seidel diverges on them. Instead,
+# smoothed aggregation uses a Petrov-Galerkin restriction: R is the tentative
+# interpolation T smoothed with Aᵀ, and both P and R are damped by the spectral radius
+# of D⁻¹A (or D⁻¹Aᵀ) rather than by local row sums.
+smooth_prolongator(smooth, A, T, S, B, ::HermitianSymmetry) = smooth(A, T, S, B)
+smooth_prolongator(smooth, A, T, S, B, ::NoSymmetry) = smooth(A, T, S, B)
+smooth_prolongator(smooth::JacobiProlongation, A, T, S, B, ::NoSymmetry) =
+    smooth(A, T, S, B, 1, DiagonalWeighting())
+
+construct_R(::HermitianSymmetry, smooth, A, T, S, B, P) = P'
+construct_R(symmetry::NoSymmetry, smooth, A, T, S, B, P) =
+    smooth_prolongator(smooth, adjoint(A), T, S, B, symmetry)'
 
 function fit_candidates(AggOp, B::AbstractVector; tol=1e-10)
     A = adjoint(AggOp)
