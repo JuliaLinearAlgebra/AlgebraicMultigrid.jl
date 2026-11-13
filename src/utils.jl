@@ -117,11 +117,11 @@ function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
         for (i,v) in enumerate(V)
         # for i = 1:j
             v = V[i]
-            H[i,j] = dot(conj.(v), w)
+            H[i,j] = dot(v, w)   # vᴴw; `dot` conjugates its first argument
             BLAS.axpy!(-H[i,j], v, w)
         end
         H[j+1,j] = norm(w)
-        if H[j+1, j] < breakdown
+        if real(H[j+1, j]) < breakdown   # a norm: real, even when H is complex
             flag = true
             if H[j+1,j] != 0
                 rmul!(w, 1/H[j+1,j])
@@ -141,6 +141,7 @@ end
 
 find_breakdown(::Type{Float64}) = eps(Float64) * 10^6
 find_breakdown(::Type{Float32}) = eps(Float64) * 10^3
+find_breakdown(::Type{Complex{T}}) where {T} = find_breakdown(T)
 
 #=function mul!(α::Number, A::SparseMatrixCSC, B::StridedVecOrMat, β::Number, C::StridedVecOrMat)
     A.n == size(B, 1) || throw(DimensionMismatch())

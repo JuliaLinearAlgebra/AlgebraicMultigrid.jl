@@ -325,6 +325,19 @@ function test_approximate_spectral_radius()
         expected_eig = maximum(abs, eigvals(Matrix(A)))
         @test isapprox(approximate_spectral_radius(A), expected_eig; rtol = 0.05)
     end
+
+    # Complex matrices (these used to throw a MethodError in `find_breakdown`)
+    complex_diag = sparse(Diagonal(ComplexF64[3im, -2, 1 + 1im, 0.5]))
+    @test approximate_spectral_radius(complex_diag) ≈ 3.0
+    complex_sparse = sprandn(ComplexF64, 200, 200, 0.05) + I
+    expected_eig = maximum(abs, eigvals(Matrix(complex_sparse)))
+    @test isapprox(approximate_spectral_radius(complex_sparse), expected_eig; rtol = 0.05)
+
+    # A real restart vector falls back to the imaginary part of a purely imaginary
+    # Ritz vector.
+    v0 = zeros(3)
+    AlgebraicMultigrid.restart_vector!(v0, ComplexF64[1im, -2im, 3im])
+    @test v0 == [1.0, -2.0, 3.0]
 end
 
 # Test Gauss Seidel
