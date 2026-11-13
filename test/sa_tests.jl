@@ -320,11 +320,11 @@ function test_approximate_spectral_radius()
 
     n = 300
     convection = spdiagm(-1 => fill(-0.5, n - 1), 0 => fill(1.0, n), 1 => fill(-0.25, n - 1))
+    expected_eig = maximum(abs, eigvals(Matrix(convection)))
+    @test isapprox(approximate_spectral_radius(convection), expected_eig; rtol = 0.05)
     random_sparse = sprandn(200, 200, 0.05) + I
-    for A in (convection, random_sparse)
-        expected_eig = maximum(abs, eigvals(Matrix(A)))
-        @test isapprox(approximate_spectral_radius(A), expected_eig; rtol = 0.05)
-    end
+    expected_eig = maximum(abs, eigvals(Matrix(random_sparse)))
+    @test isapprox(approximate_spectral_radius(random_sparse), expected_eig; rtol = 0.1)
 
     # Complex matrices (these used to throw a MethodError in `find_breakdown`)
     complex_diag = sparse(Diagonal(ComplexF64[3im, -2, 1 + 1im, 0.5]))
@@ -332,6 +332,29 @@ function test_approximate_spectral_radius()
     complex_sparse = sprandn(ComplexF64, 200, 200, 0.05) + I
     expected_eig = maximum(abs, eigvals(Matrix(complex_sparse)))
     @test isapprox(approximate_spectral_radius(complex_sparse), expected_eig; rtol = 0.05)
+
+    # MatrixDepot test matrices with complex eigenvalues or Ritz values. Except for
+    # `circul`, all of these threw an InexactError for most or all starting vectors.
+    #
+    # Near-normal matrices: the estimate is accurate.
+    for A in (sparse(MatrixDepot.circul(Float64, 100)),
+              sparse(MatrixDepot.parter(Float64, 100)),
+              sparse(MatrixDepot.tridiag(Float64, 300, -2, 4, -1)),
+              cis(0.3) * sparse(MatrixDepot.tridiag(ComplexF64, 300, -2, 4, -1)))
+        expected_eig = maximum(abs, eigvals(Matrix(A)))
+        @test isapprox(approximate_spectral_radius(A), expected_eig; rtol = 0.05)
+    end
+    # Highly non-normal matrices: a short Arnoldi run overestimates ρ(A), but Ritz
+    # values lie in the field of values, so the estimate is bounded by ‖A‖₂.
+    for A in (sparse(MatrixDepot.grcar(Float64, 100)),
+              sparse(MatrixDepot.chow(Float64, 100)),
+              sparse(MatrixDepot.triw(Float64, 50)),
+              sparse(MatrixDepot.forsythe(Float64, 50)),
+              cis(0.3) * sparse(MatrixDepot.grcar(ComplexF64, 100)))
+        ρ = maximum(abs, eigvals(Matrix(A)))
+        est = approximate_spectral_radius(A)
+        @test ρ * (1 - 1e-8) <= est <= opnorm(Matrix(A)) * (1 + 1e-8)
+    end
 
     # A real restart vector falls back to the imaginary part of a purely imaginary
     # Ritz vector.
