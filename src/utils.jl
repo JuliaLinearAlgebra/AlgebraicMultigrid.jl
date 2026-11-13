@@ -55,13 +55,26 @@ function approximate_spectral_radius(A, tol = 0.01,
         # m, max_index = findmax(abs.(ev))
         m, max_index = findmaxabs(ev)
         error = H[nvecs, nvecs-1] * evect[end, max_index]
-        @views mul!(v0, X, evect[:, max_index])
+        @views restart_vector!(v0, X * evect[:, max_index])
         if (abs(error) / abs(ev[max_index]) < tol) || flag
             # v0 = X * evect[:, max_index]
             break
         end
     end
     ρ = abs(ev[max_index])
+end
+
+# Restart vector for the next Arnoldi pass from the dominant Ritz vector `y`.
+# For a real, non-symmetric `A` the Ritz vector can be complex; a real restart
+# vector is then taken from its real part (or its imaginary part, if the real part
+# vanishes). Both lie in the invariant subspace of the complex-conjugate pair.
+restart_vector!(v0::AbstractVector{<:Complex}, y) = copyto!(v0, y)
+function restart_vector!(v0::AbstractVector{<:Real}, y)
+    v0 .= real.(y)
+    if norm(v0) <= sqrt(eps(real(eltype(v0)))) * norm(y)
+        v0 .= imag.(y)
+    end
+    return v0
 end
 
 function findmaxabs(arr)
@@ -104,11 +117,11 @@ function approximate_eigenvalues(A, tol, maxiter, symmetric, v0)
         for (i,v) in enumerate(V)
         # for i = 1:j
             v = V[i]
-            H[i,j] = dot(conj.(v), w)
+            H[i,j] = dot(v, w)   # vᴴw; `dot` conjugates its first argument
             BLAS.axpy!(-H[i,j], v, w)
         end
         H[j+1,j] = norm(w)
-        if H[j+1, j] < breakdown
+        if real(H[j+1, j]) < breakdown   # a norm: real, even when H is complex
             flag = true
             if H[j+1,j] != 0
                 rmul!(w, 1/H[j+1,j])
@@ -128,6 +141,7 @@ end
 
 find_breakdown(::Type{Float64}) = eps(Float64) * 10^6
 find_breakdown(::Type{Float32}) = eps(Float64) * 10^3
+find_breakdown(::Type{Complex{T}}) where {T} = find_breakdown(T)
 
 #=function mul!(α::Number, A::SparseMatrixCSC, B::StridedVecOrMat, β::Number, C::StridedVecOrMat)
     A.n == size(B, 1) || throw(DimensionMismatch())
