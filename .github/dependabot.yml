@@ -8,4 +8,4 @@ updates:
   - package-ecosystem: "julia"
     directory: "/" # Location of Project.toml
     schedule:
-      interval: "weekly"
+      interval: "monthly"
