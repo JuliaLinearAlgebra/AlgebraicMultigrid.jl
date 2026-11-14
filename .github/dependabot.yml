@@ -5,3 +5,7 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "monthly"
+  - package-ecosystem: "julia"
+    directory: "/" # Location of Project.toml
+    schedule:
+      interval: "weekly"
