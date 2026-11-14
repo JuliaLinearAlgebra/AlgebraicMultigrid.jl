@@ -14,6 +14,7 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 [compat]
 CommonSolve = "0.2"
 JLD2 = "0.6.3"
+LinearAlgebra = "1.10"
 LinearSolve = "2, 3, 4, 5"
 MatrixDepot = "1.0.14"
 Reexport = "1"
