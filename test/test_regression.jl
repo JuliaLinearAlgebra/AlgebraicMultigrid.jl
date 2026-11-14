@@ -64,7 +64,8 @@ end
     ml = ruge_stuben(X)
     @test AlgebraicMultigrid._solve(ml, b, reltol = 1e-10) ≈ X \ b rtol = 1e-10
 
-    ml = smoothed_aggregation(X, strength = SymmetricStrength(0.05))
+    # No connection is strong at this threshold, so SA falls back to the coarse solver.
+    ml = @test_logs (:warn, r"Could not coarsen the input matrix") smoothed_aggregation(X, strength = SymmetricStrength(0.05))
     @test AlgebraicMultigrid._solve(ml, b, reltol = 1e-10) ≈ X \ b rtol = 1e-10
 end
 

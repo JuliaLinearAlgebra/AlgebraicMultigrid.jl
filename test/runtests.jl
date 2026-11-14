@@ -264,3 +264,4 @@ include("test_nonsymmetric.jl")
 include("test_matrixdepot.jl")
 
 include("test_complex.jl")
+include("test_logging.jl")

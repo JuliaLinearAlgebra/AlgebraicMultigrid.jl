@@ -12,6 +12,7 @@ function ruge_stuben(A::TA,
                 postsmoother = GaussSeidel(),
                 max_levels = 10,
                 max_coarse = 10,
+                verbose = false,
                 coarse_solver = _default_coarse_solver(A), kwargs...) where {Ti,Tv,bs,TA<:SparseMatrixCSC{Ti,Tv}}
 
     # fails if near null space `B` is provided
@@ -23,14 +24,19 @@ function ruge_stuben(A::TA,
 
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
         @timeit_debug "extend_hierarchy!" A, stop_coarsening = extend_hierarchy_rs!(levels, strength, CF, A, presmoother, postsmoother, symmetry)
-        stop_coarsening && break
+        if stop_coarsening
+            _log_coarsening_stalled(A, max_coarse, length(levels) + 1)
+            break
+        end
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
         residual!(w, size(A, 1))
     end
 
     @timeit_debug "coarse solver setup" cs = coarse_solver(A)
-    return MultiLevel(levels, A, cs, presmoother, postsmoother, w)
+    ml = MultiLevel(levels, A, cs, presmoother, postsmoother, w)
+    _log_hierarchy(ml, verbose)
+    return ml
 end
 
 function extend_hierarchy_rs!(levels, strength, CF, A::SparseMatrixCSC{Ti,Tv}, presmoother, postsmoother, symmetry) where {Ti,Tv}
