@@ -186,7 +186,7 @@ function _solve!(x, ml::MultiLevel, b::AbstractArray{T},
                 @printf "Norm of residual at iteration %6d is %.4e\n" itr normres
             end
             mul!(res, A, x)
-            reshape(res, size(b)) .= b .- reshape(res, size(b))
+            residual!(res, b)
             normres = norm(res)
             log && push!(residuals, normres)
         end
@@ -195,6 +195,17 @@ function _solve!(x, ml::MultiLevel, b::AbstractArray{T},
 
     # @show residuals
     log ? (x, residuals) : x
+end
+
+# res .= b .- res, with `res` (a workspace vector) shaped like `b`. The
+# reshape is bound once: written as `reshape(res, size(b)) .= b .-
+# reshape(res, size(b))`, the two wrappers are distinct objects over the same
+# memory, so broadcast copies the source to unalias it, allocating a vector
+# of the level's size on every level of every cycle.
+function residual!(res, b)
+    r = reshape(res, size(b))
+    r .= b .- r
+    return res
 end
 
 function __solve_next!(x, ml, cycle::V, b, lvl)
@@ -217,7 +228,7 @@ function __solve!(x, ml, cycle::Cycle, b, lvl)
 
     res = ml.workspace.res_vecs[lvl]
     @timeit_debug "Residual eval" mul!(res, A, x)
-    reshape(res, size(b)) .= b .- reshape(res, size(b))
+    residual!(res, b)
 
     coarse_b = ml.workspace.coarse_bs[lvl]
     @timeit_debug "Restriction" mul!(coarse_b, ml.levels[lvl].R, res)
