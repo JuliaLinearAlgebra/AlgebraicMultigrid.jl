@@ -82,4 +82,11 @@ end
     @test A*xsa ≈ b rtol = 1.0e-8
 end
 
+@testset "Preconditioner `mul!` with a one-level hierarchy" begin
+    A = poisson(20)
+    p = aspreconditioner(smoothed_aggregation(A; max_levels = 1))
+    x = rand(20)
+    @test mul!(zeros(20), p, x) ≈ A * x
+end
+
 end

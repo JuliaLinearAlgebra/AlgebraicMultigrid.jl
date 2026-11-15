@@ -22,8 +22,12 @@
     @inferred solve(A, b, RugeStubenAMG())
     @inferred solve(A, b, SmoothedAggregationAMG())
     @inferred solve(Ac, bc, RugeStubenAMG())
-    # `log = true` still returns the residual history
+    # `log = true` returns `(x, residuals)`
     x, residuals = solve(A, b, RugeStubenAMG(); log = true)
     @test x isa Vector{Float64}
     @test residuals isa Vector{Float64}
+
+    # `AMGSolver{T}(ml, b)` infers the hierarchy type.
+    ml = ruge_stuben(A)
+    @test AlgebraicMultigrid.AMGSolver{Float64}(ml, b) isa AlgebraicMultigrid.AMGSolver{Float64}
 end

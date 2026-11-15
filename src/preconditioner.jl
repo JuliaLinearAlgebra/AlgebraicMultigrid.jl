@@ -16,12 +16,10 @@ function ldiv!(x, p::Preconditioner, b)
         x .= b
     end
     _solve!(x, p.ml, b, p.cycle, maxiter = 1, calculate_residual = false)
-    # Return `x` explicitly: `_solve!` may also return `(x, residuals)` (with
-    # `log = true`), and whether inference sees through that depends on
-    # constant-propagation heuristics.
+    # Return `x` rather than rely on inference narrowing `_solve!`'s `log`-dependent return type.
     return x
 end
-mul!(b, p::Preconditioner, x) = mul!(b, p.ml.levels[1].A, x)
+mul!(b, p::Preconditioner, x) = mul!(b, length(p.ml) == 1 ? p.ml.final_A : p.ml.levels[1].A, x)
 
 function \(p::Preconditioner, b)
     ldiv!(similar(b), p, b)

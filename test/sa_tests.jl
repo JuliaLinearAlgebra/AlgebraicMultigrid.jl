@@ -224,6 +224,11 @@ function generate_fit_candidates_cases()
 
     for T in (Float32, Float64)
 
+        # A candidate that is zero on one aggregate
+        AggOp = SparseMatrixCSC(2, 4, collect(1:5), [1,1,2,2], ones(T,4))
+        B = T[1, 2, 0, 0]
+        push!(cases, (AggOp, B))
+
         # One candidate
         AggOp = SparseMatrixCSC(2, 5, collect(1:6),
                         [1,1,1,2,2], ones(T,5))

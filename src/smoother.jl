@@ -73,9 +73,8 @@ end
 function gs!(A::SparseMatrixCSC, b, x, start, step, stop)
     n = size(A, 1)
     z = zero(eltype(A))
-    # `val * x[row, col]` is wider than eltype(A) when x is (e.g. Float32 A with a
-    # Float64 right-hand side), so accumulate in the promoted type to keep `rsum`
-    # type-stable in the inner loop.
+    # Accumulate in the promoted type so `rsum` stays type-stable when `x` is wider
+    # than `A` (e.g. Float32 `A`, Float64 `x`).
     zr = zero(promote_type(eltype(A), eltype(x)))
     @assert size(x,2) == size(b, 2) "x and b must have the same number of columns"
     @inbounds for col in 1:size(x, 2)

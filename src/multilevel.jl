@@ -155,9 +155,7 @@ function _solve(ml::MultiLevel, b::AbstractArray, args...; kwargs...)
     x = zeros(V, size(b))
     return _solve!(x, ml, b, args...; kwargs...)
 end
-# `log` selects between returning `x` and `(x, residuals)`; aggressive constant
-# propagation lets inference resolve that wherever `log` is a constant (e.g. the
-# default), instead of inferring a `Union` of both.
+# With `log` constant, aggressive constprop infers `x` or `(x, residuals)`, not a Union.
 Base.@constprop :aggressive function _solve!(x, ml::MultiLevel, b::AbstractArray{T},
                                     cycle::Cycle = V();
                                     maxiter::Int = 100,
@@ -257,6 +255,7 @@ struct AMGSolver{T, ML <: MultiLevel}
     ml::ML
     b::Vector{T}
 end
+AMGSolver{T}(ml::ML, b) where {T, ML <: MultiLevel} = AMGSolver{T, ML}(ml, b)
 
 abstract type AMGAlg end
 
