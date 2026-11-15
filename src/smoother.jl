@@ -48,6 +48,17 @@ function setup_smoother(config::Smoother, A, symmetry)
     error("setup_smoother(config, matrix, symmetry) not dispatched for smoother type $(typeof(config)) and symmetry type $(typeof(symmetry))")
 end
 
+# Default smoother scratch vector: at least Float64, so Float32 matrices are
+# smoothed in Float64 and the Float64 iterate of a mixed-precision solve fits.
+_default_scratch(A) = zeros(promote_type(eltype(A), Float64), size(A, 1))
+
+# Return `tmp`, or, if `x` is wider, a new buffer of the promoted eltype
+# (allocated on every call).
+function _scratch_for(tmp, x)
+    T = promote_type(eltype(tmp), eltype(x))
+    return T === eltype(tmp) ? tmp : similar(tmp, T)
+end
+
 struct FastGSSmoother{S <: Sweep, Tv, Ti}
     A::SparseMatrixCSC{Tv, Ti}
     sweep::S
@@ -486,6 +497,11 @@ function smooth!(x, s::SymmetricGaussSeidelSmoother, b)
     return nothing
 end
 
+# SOR builds the next iterate in a scratch array, which must match `x` in shape and
+# fit its values. Block solves (several columns) get a new array on every call.
+_sor_tmp(tmp, x) = size(tmp) == size(x) ? _scratch_for(tmp, x) :
+    similar(x, promote_type(eltype(tmp), eltype(x)))
+
 struct ForwardSORSmoother{Tv, Ti, vecT, numT}
     U::StrictlyUpperTriangular{Tv, Ti}
     L::FastLowerTriangular{Tv, Ti}
@@ -496,19 +512,20 @@ end
 
 function setup_smoother(config::SOR{<:ForwardSweep}, A, symmetry::NoSymmetry)
     D = DiagonalIndices(A)
-    return ForwardSORSmoother(StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), zeros(size(A, 2)), config.iter, config.ω)
+    return ForwardSORSmoother(StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), _default_scratch(A), config.iter, config.ω)
 end
 
 function smooth!(x, s::ForwardSORSmoother, b)
     T = eltype(x)
+    tmp = _sor_tmp(s.tmp, x)
     for i in 1:s.iter
         # tmp = b - U * x
-        gauss_seidel_multiply!(-one(T), s.U, x, one(T), b, s.tmp)
+        gauss_seidel_multiply!(-one(T), s.U, x, one(T), b, tmp)
 
         # tmp = ω * inv(L) * tmp + (1 - ω) * x
-        forward_sub!(s.ω, s.L, s.tmp, one(T) - s.ω, x)
+        forward_sub!(s.ω, s.L, tmp, one(T) - s.ω, x)
 
-        copy!(x, s.tmp)
+        copy!(x, tmp)
     end
     return nothing
 end
@@ -523,19 +540,20 @@ end
 
 function setup_smoother(config::SOR{<:BackwardSweep}, A, symmetry::NoSymmetry)
     D = DiagonalIndices(A)
-    return BackwardSORSmoother(FastUpperTriangular(A, D), StrictlyLowerTriangular(A, D), zeros(size(A, 2)), config.iter, config.ω)
+    return BackwardSORSmoother(FastUpperTriangular(A, D), StrictlyLowerTriangular(A, D), _default_scratch(A), config.iter, config.ω)
 end
 
 function smooth!(x, s::BackwardSORSmoother, b)
     T = eltype(x)
+    tmp = _sor_tmp(s.tmp, x)
     for i in 1:s.iter
-        # tmp = b - U * x
-        gauss_seidel_multiply!(-one(T), s.L, x, one(T), b, s.tmp)
+        # tmp = b - L * x
+        gauss_seidel_multiply!(-one(T), s.L, x, one(T), b, tmp)
 
-        # tmp = ω * inv(L) * tmp + (1 - ω) * x
-        backward_sub!(s.ω, s.U, s.tmp, one(T) - s.ω, x)
+        # tmp = ω * inv(U) * tmp + (1 - ω) * x
+        backward_sub!(s.ω, s.U, tmp, one(T) - s.ω, x)
 
-        copy!(x, s.tmp)
+        copy!(x, tmp)
     end
     return nothing
 end
@@ -557,7 +575,7 @@ function setup_smoother(config::SOR{<:SymmetricSweep}, A, symmetry::NoSymmetry)
         StrictlyUpperTriangular(A, D),
         FastLowerTriangular(A, D),
         FastUpperTriangular(A, D),
-        zeros(size(A, 2)),
+        _default_scratch(A),
         config.iter,
         config.ω,
     )
@@ -565,22 +583,23 @@ end
 
 function smooth!(x, s::SymmetricSORSmoother, b)
     T = eltype(x)
+    tmp = _sor_tmp(s.tmp, x)
     for i in 1:s.iter
         # tmp = b - U * x
-        gauss_seidel_multiply!(-one(T), s.sU, x, one(T), b, s.tmp)
+        gauss_seidel_multiply!(-one(T), s.sU, x, one(T), b, tmp)
 
         # tmp = ω * inv(L) * tmp + (1 - ω) * x
-        forward_sub!(s.ω, s.L, s.tmp, one(T) - s.ω, x)
+        forward_sub!(s.ω, s.L, tmp, one(T) - s.ω, x)
 
-        copy!(x, s.tmp)
+        copy!(x, tmp)
 
-        # tmp = b - U * x
-        gauss_seidel_multiply!(-one(T), s.sL, x, one(T), b, s.tmp)
+        # tmp = b - L * x
+        gauss_seidel_multiply!(-one(T), s.sL, x, one(T), b, tmp)
 
-        # tmp = ω * inv(L) * tmp + (1 - ω) * x
-        backward_sub!(s.ω, s.U, s.tmp, one(T) - s.ω, x)
+        # tmp = ω * inv(U) * tmp + (1 - ω) * x
+        backward_sub!(s.ω, s.U, tmp, one(T) - s.ω, x)
 
-        copy!(x, s.tmp)
+        copy!(x, tmp)
     end
     return nothing
 end

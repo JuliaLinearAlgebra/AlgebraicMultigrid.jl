@@ -1,5 +1,5 @@
 # In this file we test the build-in smoothers
-using AlgebraicMultigrid, SparseArrays, LinearAlgebra
+using AlgebraicMultigrid, SparseArrays, LinearAlgebra, Random
 using Test
 import AlgebraicMultigrid as AMG
 
@@ -24,6 +24,32 @@ b = ones(N)
     x = copy(x0)
     smoother(A, x, b, AlgebraicMultigrid.NoSymmetry())
     @test A*x ≈ b
+end
+
+@testset "Complex and block right-hand sides with $smoother" for smoother in [
+    GaussSeidel(ForwardSweep(), 100),
+    GaussSeidel(BackwardSweep(), 100),
+    GaussSeidel(SymmetricSweep(), 100),
+    SOR(0.5, ForwardSweep(), 100),
+    SOR(0.5, BackwardSweep(), 100),
+    SOR(0.5, SymmetricSweep(), 100),
+]
+    rng = Xoshiro(0)
+    Ac = sprand(rng, ComplexF64, N, N, 0.05) + 5I
+    bc = rand(rng, ComplexF64, N)
+    x = zeros(ComplexF64, N)
+    smoother(Ac, x, bc, AlgebraicMultigrid.NoSymmetry())
+    @test Ac*x ≈ bc
+
+    # A real matrix with a complex right-hand side.
+    x = zeros(ComplexF64, N)
+    smoother(A, x, bc, AlgebraicMultigrid.NoSymmetry())
+    @test A*x ≈ bc
+
+    # A block right-hand side (two columns).
+    X = zeros(N, 2)
+    smoother(A, X, [b 2b], AlgebraicMultigrid.NoSymmetry())
+    @test A*X ≈ [b 2b]
 end
 
 @testset "Symmetric matrix with $smoother"  for smoother in [
