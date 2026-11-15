@@ -183,7 +183,8 @@ function _solve(ml::MultiLevel, b::AbstractArray, args...; kwargs...)
     x = zeros(V, size(b))
     return _solve!(x, ml, b, args...; kwargs...)
 end
-function _solve!(x, ml::MultiLevel, b::AbstractArray{T},
+# With `log` constant, aggressive constprop infers `x` or `(x, residuals)`, not a Union.
+Base.@constprop :aggressive function _solve!(x, ml::MultiLevel, b::AbstractArray{T},
                                     cycle::Cycle = V();
                                     maxiter::Int = 100,
                                     abstol::Real = zero(real(eltype(b))),
@@ -276,10 +277,11 @@ function __solve!(x, ml, cycle::Cycle, b, lvl)
 end
 
 ### CommonSolve.jl spec
-struct AMGSolver{T}
-    ml::MultiLevel
+struct AMGSolver{T, ML <: MultiLevel}
+    ml::ML
     b::Vector{T}
 end
+AMGSolver{T}(ml::ML, b) where {T, ML <: MultiLevel} = AMGSolver{T, ML}(ml, b)
 
 abstract type AMGAlg end
 

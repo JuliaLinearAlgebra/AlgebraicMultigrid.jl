@@ -178,7 +178,7 @@ function fit_candidates(AggOp, B::AbstractVector; tol=1e-10)
             scale = 1 / norm_i
             R[i] = norm_i
         else
-            scale = 0
+            scale = zero(norm_i)
             R[i] = 0
         end
         for j in nzrange(A, i)
