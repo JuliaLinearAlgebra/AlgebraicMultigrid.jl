@@ -44,4 +44,24 @@ end
     @test x_fast ≈ x_general
 end
 
+
+@testset "Jacobi with an iterate wider than the matrix ($(nameof(typeof(sym))))" for sym in (
+    AlgebraicMultigrid.NoSymmetry(),
+    AlgebraicMultigrid.HermitianSymmetry(),
+)
+    A_dd = poisson(N) + 2I   # symmetric and diagonally dominant, so Jacobi converges quickly
+    jacobi = AMG.Jacobi(2 / 3, iter = 200)
+
+    # Float32 matrix with a Float64 iterate: computed in Float64, not truncated to Float32.
+    x = zeros(N)
+    jacobi(Float32.(A_dd), x, b, sym)
+    @test A_dd * x ≈ b
+
+    # Real matrix with a complex iterate.
+    bc = complex.(b, 2 .* b)
+    x = zeros(ComplexF64, N)
+    jacobi(A_dd, x, bc, sym)
+    @test A_dd * x ≈ bc
+end
+
 end
