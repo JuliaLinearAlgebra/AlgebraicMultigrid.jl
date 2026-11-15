@@ -73,16 +73,20 @@ end
 function gs!(A::SparseMatrixCSC, b, x, start, step, stop)
     n = size(A, 1)
     z = zero(eltype(A))
+    # `val * x[row, col]` is wider than eltype(A) when x is (e.g. Float32 A with a
+    # Float64 right-hand side), so accumulate in the promoted type to keep `rsum`
+    # type-stable in the inner loop.
+    zr = zero(promote_type(eltype(A), eltype(x)))
     @assert size(x,2) == size(b, 2) "x and b must have the same number of columns"
     @inbounds for col in 1:size(x, 2)
         for i in start:step:stop
-            rsum = z
+            rsum = zr
             d = z
             for j in nzrange(A, i)
                 row = A.rowval[j]
                 val = A.nzval[j]
                 d = ifelse(i == row, val, d)
-                rsum += ifelse(i == row, z, val * x[row, col])
+                rsum += ifelse(i == row, zr, val * x[row, col])
             end
             x[i, col] = ifelse(d == 0, x[i, col], (b[i, col] - rsum) / d)
         end
@@ -205,15 +209,16 @@ end
 function sor_step!(A, b, x, ω, start, step, stop)
     n = size(A, 1)
     z = zero(eltype(A))
+    zr = zero(promote_type(eltype(A), eltype(x)))  # see gs!
     @inbounds for col in 1:size(x, 2)
         for i in start:step:stop
-            rsum = z
+            rsum = zr
             d = z
             for j in nzrange(A, i)
                 row = A.rowval[j]
                 val = A.nzval[j]
                 d = ifelse(i == row, val, d)
-                rsum += ifelse(i == row, z, val * x[row, col])
+                rsum += ifelse(i == row, zr, val * x[row, col])
             end
             x[i, col] = ifelse(d == 0, x[i, col], (1 - ω) * x[i, col] + (ω / d) * (b[i, col] - rsum))
         end
