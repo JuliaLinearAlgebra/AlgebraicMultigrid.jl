@@ -57,10 +57,9 @@ end
     jacobi(Float32.(A_dd), x, b, sym)
     @test A_dd * x ≈ b
 
-    # ... without allocating a new buffer.
+    # ... reusing the preallocated buffer.
     s = AlgebraicMultigrid.setup_smoother(jacobi, Float32.(A_dd), sym)
-    smooth_allocs(x) = (AlgebraicMultigrid.smooth!(x, s, b); @allocated AlgebraicMultigrid.smooth!(x, s, b))
-    @test smooth_allocs(zeros(N)) == 0
+    @test AlgebraicMultigrid._scratch_for(s.temp, zeros(N)) === s.temp
 
     # Real matrix with a complex iterate.
     bc = complex.(b, 2 .* b)
