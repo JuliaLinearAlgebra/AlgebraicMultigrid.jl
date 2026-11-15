@@ -26,7 +26,7 @@ b = ones(N)
     @test A*x ≈ b
 end
 
-@testset "Complex non-symmetric matrix with $smoother" for smoother in [
+@testset "Complex and block right-hand sides with $smoother" for smoother in [
     GaussSeidel(ForwardSweep(), 100),
     GaussSeidel(BackwardSweep(), 100),
     GaussSeidel(SymmetricSweep(), 100),
@@ -45,6 +45,11 @@ end
     x = zeros(ComplexF64, N)
     smoother(A, x, bc, AlgebraicMultigrid.NoSymmetry())
     @test A*x ≈ bc
+
+    # A block right-hand side (two columns).
+    X = zeros(N, 2)
+    smoother(A, X, [b 2b], AlgebraicMultigrid.NoSymmetry())
+    @test A*X ≈ [b 2b]
 end
 
 @testset "Symmetric matrix with $smoother"  for smoother in [
