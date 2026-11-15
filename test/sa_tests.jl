@@ -167,7 +167,7 @@ function test_standard_aggregation_corner_cases()
     # smoothed_aggregation on a large diagonal matrix (all nodes isolated at every level)
     # must return a valid 1-level hierarchy rather than crashing at solve time.
     A_diag = spdiagm(0 => 2.0 * ones(Float64, 20))
-    ml_diag = smoothed_aggregation(A_diag)
+    ml_diag = @test_logs (:warn, r"Could not coarsen the input matrix") smoothed_aggregation(A_diag)
     @test length(ml_diag) == 1
     @test size(ml_diag.final_A) == (20, 20)
 

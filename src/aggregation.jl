@@ -96,8 +96,11 @@ function smoothed_aggregation(A::TA,
     while length(levels) + 1 < max_levels && size(A, 1) > max_coarse
         @timeit_debug "extend_hierarchy!" A, B, bsr_flag, stop_coarsening = extend_hierarchy_sa!(levels, strength, aggregate, smooth,
                                 improve_candidates, diagonal_dominance,
-                                keep, A, B, presmoother, postsmoother, symmetry, bsr_flag, verbose)
-        stop_coarsening && break
+                                keep, A, B, presmoother, postsmoother, symmetry, bsr_flag)
+        if stop_coarsening
+            _log_coarsening_stalled(A, max_coarse, length(levels) + 1)
+            break
+        end
         coarse_x!(w, size(A, 1))
         coarse_b!(w, size(A, 1))
         residual!(w, size(A, 1))
@@ -105,18 +108,14 @@ function smoothed_aggregation(A::TA,
 
     @timeit_debug "coarse solver setup" cs = coarse_solver(A)
     ml = MultiLevel(levels, A, cs,  presmoother, postsmoother, w)
-
-    if verbose
-        @info ml
-    end
-
+    _log_hierarchy(ml, verbose)
     return ml
 end
 
 function extend_hierarchy_sa!(levels, strength, aggregate, smooth,
                             improve_candidates, diagonal_dominance,
                             keep, A, B, presmoother, postsmoother,
-                            symmetry, bsr_flag, verbose)
+                            symmetry, bsr_flag)
 
     # Calculate strength of connection matrix
     @timeit_debug "strength" if symmetry isa HermitianSymmetry
