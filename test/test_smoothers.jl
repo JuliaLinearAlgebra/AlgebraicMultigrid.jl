@@ -70,4 +70,38 @@ end
     @test x_fast ≈ x_general
 end
 
+
+@testset "Jacobi with an iterate wider than the matrix ($(nameof(typeof(sym))))" for sym in (
+    AlgebraicMultigrid.NoSymmetry(),
+    AlgebraicMultigrid.HermitianSymmetry(),
+)
+    A_dd = poisson(N) + 2I   # symmetric and diagonally dominant, so Jacobi converges quickly
+    jacobi = AMG.Jacobi(2 / 3, iter = 200)
+
+    # Float32 matrix with a Float64 iterate: computed in Float64, not truncated to Float32.
+    x = zeros(N)
+    jacobi(Float32.(A_dd), x, b, sym)
+    @test A_dd * x ≈ b
+
+    # ... reusing the preallocated buffer.
+    s = AlgebraicMultigrid.setup_smoother(jacobi, Float32.(A_dd), sym)
+    @test AlgebraicMultigrid._scratch_for(s.temp, zeros(N)) === s.temp
+
+    # Real matrix with a complex iterate.
+    bc = complex.(b, 2 .* b)
+    x = zeros(ComplexF64, N)
+    jacobi(A_dd, x, bc, sym)
+    @test A_dd * x ≈ bc
+end
+
+
+@testset "Jacobi with a user-supplied buffer in a hierarchy" begin
+    # The buffer is sized for the finest level; coarser levels must get their own.
+    A_h = poisson(200)
+    jacobi = AMG.Jacobi(2 / 3, zeros(200))
+    ml = ruge_stuben(A_h; presmoother = jacobi, postsmoother = jacobi, symmetry = AlgebraicMultigrid.NoSymmetry())
+    x = AMG._solve(ml, ones(200); reltol = 1e-10)
+    @test A_h * x ≈ ones(200)
+end
+
 end

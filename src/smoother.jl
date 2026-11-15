@@ -119,16 +119,23 @@ struct FastJacobiSmoother{Tv, Ti, TX, numT}
     ω::numT
 end
 
+# A user-supplied `temp` fits only the level it was sized for; other levels get their own.
+_jacobi_temp(config, A) =
+    config.temp !== nothing && length(config.temp) == size(A, 1) ? config.temp : _default_scratch(A)
+
 function setup_smoother(config::Jacobi, A, symmetry::HermitianSymmetry)
-    temp = config.temp === nothing ? zeros(eltype(A), size(A,1)) : config.temp
+    temp = _jacobi_temp(config, A)
     return FastJacobiSmoother(A, config.iter, temp, config.ω)
 end
 
 function smooth!(x, jacobi::FastJacobiSmoother, b)
 
-    (; A, ω, temp, iter) = jacobi
+    (; A, ω, iter) = jacobi
+    # `temp` holds a copy of the current iterate, so it must be as wide as `x`.
+    temp = _scratch_for(jacobi.temp, x)
     one = Base.one(eltype(A))
     z = zero(eltype(A))
+    zr = zero(promote_type(eltype(A), eltype(temp)))
     for _ in 1:iter
         @inbounds for col = 1:size(x, 2)
             for i = 1:size(A, 1)
@@ -136,7 +143,7 @@ function smooth!(x, jacobi::FastJacobiSmoother, b)
             end
 
             for i = 1:size(A, 1)
-                rsum = z
+                rsum = zr
                 diag = z
 
                 for j in nzrange(A, i)
@@ -144,7 +151,7 @@ function smooth!(x, jacobi::FastJacobiSmoother, b)
                     val = A.nzval[j]
 
                     diag = ifelse(row == i, val, diag)
-                    rsum += ifelse(row == i, z, val * temp[row])
+                    rsum += ifelse(row == i, zr, val * temp[row])
                 end
 
                 xcand = (one - ω) * temp[i] + ω * ((b[i, col] - rsum) / diag)
@@ -164,12 +171,14 @@ struct JacobiSmoother{Tv, Ti, TX, TX2, numT}
 end
 
 function setup_smoother(config::Jacobi, A, symmetry::NoSymmetry)
-    temp = config.temp === nothing ? zeros(eltype(A), size(A,1)) : config.temp
+    temp = _jacobi_temp(config, A)
     return JacobiSmoother(A, config.iter, temp, collect(diag(A)), config.ω)
 end
 
 function smooth!(x, jacobi::JacobiSmoother, b)
-    (; A, iter, temp, diagvals, ω) = jacobi
+    (; A, iter, diagvals, ω) = jacobi
+    # `temp` holds the residual `A * x - b`, so it must be as wide as `x`.
+    temp = _scratch_for(jacobi.temp, x)
     for _ in 1:iter
         for col = 1:size(x, 2)
             mul!(temp, A, @view(x[:, col]))
