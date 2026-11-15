@@ -228,7 +228,10 @@ end
 # reshape is bound once: written as `reshape(res, size(b)) .= b .-
 # reshape(res, size(b))`, the two wrappers are distinct objects over the same
 # memory, so broadcast copies the source to unalias it, allocating a vector
-# of the level's size on every level of every cycle.
+# of the level's size on every level of every cycle. When both are vectors
+# no reshape is needed at all, and skipping it saves the wrapper `reshape`
+# allocates on every level of every cycle.
+residual!(res::AbstractVector, b::AbstractVector) = (res .= b .- res; res)
 function residual!(res, b)
     r = reshape(res, size(b))
     r .= b .- r
