@@ -113,20 +113,17 @@ function grid_complexity(ml::MultiLevel)
     end
 end
 
-# Called by the hierarchy builders when a coarsening step produces no coarse
-# unknowns, so the hierarchy ends at `A` while it is still larger than `max_coarse`.
-# Failing on the input matrix means there is no multigrid hierarchy at all, so that
-# warns; stalling deeper only leaves a larger coarsest level, so that is a debug message.
+# A coarsening step produced no coarse unknowns. At level 1 there is no hierarchy
+# at all (warn once); deeper, it only leaves a larger coarsest level (debug).
 function _log_coarsening_stalled(A, max_coarse, level)
     if level == 1
-        @warn "Could not coarsen the input matrix; the coarse solver will be applied to the full matrix. This usually means no strong connections were found; consider lowering the strength-of-connection threshold." unknowns = size(A, 1) max_coarse
+        @warn "Could not coarsen the input matrix; the coarse solver will be applied to the full matrix. This usually means no strong connections were found; consider lowering the strength-of-connection threshold." unknowns = size(A, 1) max_coarse maxlog = 1
     else
         @debug "Coarsening stalled before reaching max_coarse; the coarse solver will be applied to this level directly." level unknowns = size(A, 1) max_coarse
     end
 end
 
-# `verbose = true` shows the hierarchy at Info level; otherwise it is available
-# as a debug message, e.g. with `ENV["JULIA_DEBUG"] = "AlgebraicMultigrid"`.
+# Debug messages are shown with `ENV["JULIA_DEBUG"] = "AlgebraicMultigrid"`.
 function _log_hierarchy(ml::MultiLevel, verbose::Bool)
     if verbose
         @info string(ml)
@@ -137,6 +134,12 @@ end
 
 _print_residual(itr, normres) =
     @printf "Norm of residual at iteration %6d is %.4e\n" itr normres
+
+function _residual_norm!(res, A, x, b)
+    mul!(res, A, x)
+    residual!(res, b)
+    return norm(res)
+end
 
 abstract type Cycle end
 struct V <: Cycle
@@ -164,7 +167,7 @@ Keyword Arguments
 * reltol::Float64 - relative tolerance criteria for convergence, the absolute tolerance will be `reltol * norm(b)`
 * abstol::Float64 - absolute tolerance criteria for convergence
 * maxiter::Int64 - maximum number of iterations to execute
-* verbose::Bool - print the residual norm before the first iteration (iteration 0) and after each iteration
+* verbose::Bool - print the residual norm of the initial guess (iteration 0) and after each iteration
 * log::Bool - return vector of residuals along with solution
 * B::AbstractArray - the **near null space** in SA-AMG, which represents the low energy that cannot be attenuated by relaxtion, and thus needs to be perserved across the coarse grid. 
 
@@ -196,11 +199,12 @@ function _solve!(x, ml::MultiLevel, b::AbstractArray{T},
     if normb != 0
         abstol = max(reltol * normb, abstol)
     end
-    log && push!(residuals, normb)
 
     res = ml.workspace.res_vecs[1]
-    itr = lvl = 1
+    calculate_residual && (normres = _residual_norm!(res, A, x, b))
+    log && push!(residuals, normres)
     verbose && calculate_residual && _print_residual(0, normres)
+    itr = lvl = 1
     while itr <= maxiter && (!calculate_residual || normres > abstol)
         if length(ml) == 1
             @timeit_debug "Coarse solve" ml.coarse_solver(x, b)
@@ -208,9 +212,7 @@ function _solve!(x, ml::MultiLevel, b::AbstractArray{T},
             __solve!(x, ml, cycle, b, lvl)
         end
         if calculate_residual
-            mul!(res, A, x)
-            residual!(res, b)
-            normres = norm(res)
+            normres = _residual_norm!(res, A, x, b)
             log && push!(residuals, normres)
             verbose && _print_residual(itr, normres)
         end

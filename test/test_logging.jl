@@ -42,4 +42,17 @@
             @test parse(Float64, last(split(line))) ≈ r rtol = 1e-4
         end
     end
+
+    @testset "Initial residual uses the initial guess" begin
+        ml = ruge_stuben(A)
+        x0 = fill(0.5, size(A, 1))
+        _, residuals = AlgebraicMultigrid._solve!(copy(x0), ml, b; log = true, maxiter = 2)
+        @test residuals[1] ≈ norm(b - A * x0)
+
+        # An initial guess that already meets the tolerance needs no iterations.
+        x_exact = A \ b
+        x, residuals = AlgebraicMultigrid._solve!(copy(x_exact), ml, b; log = true)
+        @test length(residuals) == 1
+        @test x == x_exact
+    end
 end
