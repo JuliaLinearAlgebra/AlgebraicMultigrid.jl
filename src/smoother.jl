@@ -48,9 +48,12 @@ function setup_smoother(config::Smoother, A, symmetry)
     error("setup_smoother(config, matrix, symmetry) not dispatched for smoother type $(typeof(config)) and symmetry type $(typeof(symmetry))")
 end
 
-# Smoothers allocate their scratch vectors at setup, when only `eltype(A)` is
-# known. If `x` needs a wider element type (e.g. a complex right-hand side with a
-# real matrix), use a scratch vector of the promoted type instead.
+# Default smoother scratch vector: at least Float64, so Float32 matrices are
+# smoothed in Float64 and the Float64 iterate of a mixed-precision solve fits.
+_default_scratch(A) = zeros(promote_type(eltype(A), Float64), size(A, 1))
+
+# Return `tmp`, or, if `x` is wider, a new buffer of the promoted eltype
+# (allocated on every call).
 function _scratch_for(tmp, x)
     T = promote_type(eltype(tmp), eltype(x))
     return T === eltype(tmp) ? tmp : similar(tmp, T)
@@ -113,8 +116,12 @@ struct FastJacobiSmoother{Tv, Ti, TX, numT}
     ω::numT
 end
 
+# A user-supplied `temp` fits only the level it was sized for; other levels get their own.
+_jacobi_temp(config, A) =
+    config.temp !== nothing && length(config.temp) == size(A, 1) ? config.temp : _default_scratch(A)
+
 function setup_smoother(config::Jacobi, A, symmetry::HermitianSymmetry)
-    temp = config.temp === nothing ? zeros(eltype(A), size(A,1)) : config.temp
+    temp = _jacobi_temp(config, A)
     return FastJacobiSmoother(A, config.iter, temp, config.ω)
 end
 
@@ -161,7 +168,7 @@ struct JacobiSmoother{Tv, Ti, TX, TX2, numT}
 end
 
 function setup_smoother(config::Jacobi, A, symmetry::NoSymmetry)
-    temp = config.temp === nothing ? zeros(eltype(A), size(A,1)) : config.temp
+    temp = _jacobi_temp(config, A)
     return JacobiSmoother(A, config.iter, temp, collect(diag(A)), config.ω)
 end
 
