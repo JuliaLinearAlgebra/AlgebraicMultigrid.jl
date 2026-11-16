@@ -263,6 +263,7 @@ include("test_smoothers.jl")
 include("test_inference.jl")
 include("test_nonsymmetric.jl")
 include("test_matrixdepot.jl")
+include("test_singular.jl")
 
 include("test_complex.jl")
 include("test_logging.jl")
